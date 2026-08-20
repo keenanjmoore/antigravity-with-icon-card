@@ -1,0 +1,29 @@
+{
+  "name": "antigravity-with-icon-card",
+  "version": "1.0.0",
+  "description": "Antigravity Card (With Icon) for Home Assistant — merging Bubble Card styling with Mushroom Card controls and full icon customization",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "check": "tsc --noEmit"
+  },
+  "keywords": [
+    "home-assistant",
+    "homeassistant",
+    "lovelace",
+    "custom-card",
+    "hacs"
+  ],
+  "author": "Keenan",
+  "license": "MIT",
+  "dependencies": {
+    "custom-card-helpers": "^1.9.0",
+    "lit": "^3.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.4"
+  }
+}
