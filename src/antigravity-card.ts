@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "124";
+export const CARD_VERSION = "125";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -76,8 +76,15 @@ const RGB_TRIPLET_REGEX = /^\d+\s*,\s*\d+\s*,\s*\d+$/;
 const RGBA_QUADRUPLET_REGEX = /^\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+$/;
 
 // ---- Color Utilities ----
+const KELVIN_CACHE = new Map<number, [number, number, number]>();
+
 function kelvinToRgb(kelvin: number): [number, number, number] {
-  const temp = Math.max(1000, Math.min(40000, kelvin)) / 100;
+  if (isNaN(kelvin) || !isFinite(kelvin)) kelvin = 3000;
+  const clampedKelvin = Math.max(1000, Math.min(40000, Math.round(kelvin)));
+  const cached = KELVIN_CACHE.get(clampedKelvin);
+  if (cached) return cached;
+
+  const temp = clampedKelvin / 100;
   let r: number, g: number, b: number;
 
   if (temp <= 66) {
@@ -108,7 +115,10 @@ function kelvinToRgb(kelvin: number): [number, number, number] {
     b = Math.max(0, Math.min(255, b));
   }
 
-  return [Math.round(r), Math.round(g), Math.round(b)];
+  const result: [number, number, number] = [Math.round(r), Math.round(g), Math.round(b)];
+  if (KELVIN_CACHE.size > 256) KELVIN_CACHE.clear();
+  KELVIN_CACHE.set(clampedKelvin, result);
+  return result;
 }
 
 function rgbToHex(rgb: any): string {
@@ -285,11 +295,15 @@ const DISABLED_FADE_RESULT: FadeCalculationResult = Object.freeze({
 
 // ---- Safe Haptic Dispatcher ----
 function safeForwardHaptic(type: any, enabled = true) {
-  if (!enabled) return;
+  if (!enabled || typeof window === 'undefined') return;
   try {
     forwardHaptic(type);
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator && typeof navigator.vibrate === 'function') {
+      const duration = type === 'heavy' ? 20 : (type === 'medium' ? 12 : 6);
+      navigator.vibrate(duration);
+    }
   } catch {
-    // Ignore haptic errors on unsupported web views (e.g. wall tablets)
+    // Ignore haptic errors on unsupported web views (e.g. wall tablets, desktop)
   }
 }
 
@@ -396,15 +410,54 @@ export class AntigravityWithIconCard extends LitElement {
     this._cachedSubButtons = null;
 
     // Pre-calculate monitored entities for zero-allocation shouldUpdate checks
-    const entities: string[] = [];
-    if (this.config.entity) entities.push(this.config.entity);
-    if (this.config.sub_button_1_entity) entities.push(this.config.sub_button_1_entity);
-    if (this.config.sub_button_2_entity) entities.push(this.config.sub_button_2_entity);
-    if (this.config.sub_button_3_entity) entities.push(this.config.sub_button_3_entity);
-    if (this.config.sub_button_4_entity) entities.push(this.config.sub_button_4_entity);
-    this._monitoredEntities = entities;
+    const entitySet = new Set<string>();
+    if (this.config.entity) entitySet.add(this.config.entity);
+    if (this.config.sub_button_1_entity) entitySet.add(this.config.sub_button_1_entity);
+    if (this.config.sub_button_2_entity) entitySet.add(this.config.sub_button_2_entity);
+    if (this.config.sub_button_3_entity) entitySet.add(this.config.sub_button_3_entity);
+    if (this.config.sub_button_4_entity) entitySet.add(this.config.sub_button_4_entity);
+    if (this.config.tap_action?.target?.entity_id) {
+      const t = this.config.tap_action.target.entity_id;
+      if (typeof t === 'string') entitySet.add(t);
+      else if (Array.isArray(t)) t.forEach(id => entitySet.add(id));
+    }
+    if (this.config.hold_action?.target?.entity_id) {
+      const t = this.config.hold_action.target.entity_id;
+      if (typeof t === 'string') entitySet.add(t);
+      else if (Array.isArray(t)) t.forEach(id => entitySet.add(id));
+    }
+    this._monitoredEntities = Array.from(entitySet);
 
     this._computeStaticStylesAndClasses();
+  }
+
+  public override shouldUpdate(changedProps: PropertyValues): boolean {
+    if (!this.config || !this.hass) return true;
+    if (changedProps.has('config') || changedProps.has('preview') || changedProps.has('_collapsed')) return true;
+
+    const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
+    if (!oldHass) return true;
+
+    // Check global theme, language, and locale changes
+    if (
+      oldHass.themes !== this.hass.themes || 
+      oldHass.locale !== this.hass.locale || 
+      oldHass.language !== this.hass.language ||
+      oldHass.selectedTheme !== this.hass.selectedTheme
+    ) {
+      return true;
+    }
+
+    // Linear scan on monitored entities without array/heap allocation
+    const monitored = this._monitoredEntities;
+    const len = monitored.length;
+    for (let i = 0; i < len; i++) {
+      const ent = monitored[i];
+      if (oldHass.states[ent] !== this.hass.states[ent]) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private _staticCardStyles = '';
@@ -663,29 +716,6 @@ export class AntigravityWithIconCard extends LitElement {
     }
   }
 
-  // --- PERFORMANCE: Zero-allocation re-render check ---
-  protected shouldUpdate(changedProps: PropertyValues): boolean {
-    if (!this.config || !this.hass) return true;
-    if (changedProps.has('config') || changedProps.has('preview') || changedProps.has('_collapsed')) return true;
-    const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
-    if (!oldHass) return true;
-
-    // Check theme / language / locale changes
-    if (oldHass.themes !== this.hass.themes || oldHass.locale !== this.hass.locale || oldHass.language !== this.hass.language || oldHass.config !== this.hass.config) {
-      return true;
-    }
-
-    // Linear scan with 0 heap/array allocation
-    const monitored = this._monitoredEntities;
-    for (let i = 0; i < monitored.length; i++) {
-      const ent = monitored[i];
-      if (oldHass.states[ent] !== this.hass.states[ent]) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   private _relativeTimer: any = null;
   private _cachedSubButtons: any[] | null = null;
   private _intersectionObserver: IntersectionObserver | null = null;
@@ -758,8 +788,14 @@ export class AntigravityWithIconCard extends LitElement {
     const isStateDynamic = (domain === 'binary_sensor' || domain === 'timer') && (p === 'state' || s === 'state');
     const hasFade = this.config?.fade_transition_enabled === true;
     const stateObj = entity && this.hass ? this.hass.states[entity] : null;
-    const isLightOn = domain === 'light' && stateObj?.state === 'on';
-    const isFading = hasFade && (isLightOn || (stateObj?.last_changed && (Date.now() - new Date(stateObj.last_changed).getTime()) < 3600000));
+    
+    // Check if fade is actively in progress (not expired)
+    let isFading = false;
+    if (hasFade && stateObj) {
+      const multiStage = this._computeMultiStageFade(stateObj);
+      isFading = multiStage.enabled && multiStage.activeFade && multiStage.progressPct < 100;
+    }
+
     const needsTimer = (
       isFading ||
       isStateDynamic ||
@@ -772,6 +808,11 @@ export class AntigravityWithIconCard extends LitElement {
       const intervalMs = isFading ? 1000 : 5000;
       this._relativeTimer = setInterval(() => {
         if (!this.hasAttribute('offscreen') && this.style.display !== 'none') {
+          // If fade completed, teardown timer to save battery
+          if (isFading && !this._isFadeActive()) {
+            this._setupRelativeTimer();
+            return;
+          }
           this.requestUpdate();
         }
       }, intervalMs);
@@ -779,6 +820,15 @@ export class AntigravityWithIconCard extends LitElement {
       clearInterval(this._relativeTimer);
       this._relativeTimer = null;
     }
+  }
+
+  private _isFadeActive(): boolean {
+    const entity = this.config?.entity;
+    if (!entity || !this.hass) return false;
+    const stateObj = this.hass.states[entity];
+    if (!stateObj) return false;
+    const multiStage = this._computeMultiStageFade(stateObj);
+    return multiStage.enabled && multiStage.activeFade && multiStage.progressPct < 100;
   }
 
   disconnectedCallback() {
@@ -825,6 +875,7 @@ export class AntigravityWithIconCard extends LitElement {
       const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
       if (!oldHass || oldHass.states[this.config.entity] !== this.hass.states[this.config.entity]) {
         this._recomputeHasCollapsible();
+        this._setupRelativeTimer();
       }
     }
   }
@@ -1442,7 +1493,12 @@ export class AntigravityWithIconCard extends LitElement {
   @eventOptions({ passive: true })
   private _handlePointerMove(e: PointerEvent) {
     if (this._isSubElement(e)) return;
-    if (Math.hypot(e.clientX - this._startX, e.clientY - this._startY) > 8) {
+    const dx = e.clientX - this._startX;
+    const dy = e.clientY - this._startY;
+    const dist = Math.hypot(dx, dy);
+    const dt = Math.max(1, Date.now() - this._pointerDownTime);
+    const velocity = dist / dt;
+    if (dist > 8 || velocity > 0.5) {
       this._moved = true;
       this._pointerDownReceived = false;
       if (this._holdTimer) {
@@ -1506,7 +1562,12 @@ export class AntigravityWithIconCard extends LitElement {
   @eventOptions({ passive: true })
   private _handleSubPointerMove(e: PointerEvent) {
     e.stopPropagation();
-    if (Math.hypot(e.clientX - this._subStartX, e.clientY - this._subStartY) > 8) {
+    const dx = e.clientX - this._subStartX;
+    const dy = e.clientY - this._subStartY;
+    const dist = Math.hypot(dx, dy);
+    const dt = Math.max(1, Date.now() - this._subPointerDownTime);
+    const velocity = dist / dt;
+    if (dist > 8 || velocity > 0.5) {
       this._subMoved = true;
       if (this._subHoldTimer) {
         clearTimeout(this._subHoldTimer);
@@ -1689,7 +1750,7 @@ export class AntigravityWithIconCard extends LitElement {
       if (dx < 6 && dy < 6) {
         this._revertSlider(input, state);
         safeForwardHaptic('light', this.config.haptic_feedback !== false);
-        handleAction(this, this.hass, this.config, 'tap');
+        this._dispatchAction('tap');
       }
     }
   };
@@ -2579,13 +2640,13 @@ export class AntigravityWithIconCard extends LitElement {
                      container.setAttribute('title', `Level: ${p}%`);
                    }
                    this._throttledCall('sub_slider_' + subEntityId, () => {
-                     this.hass.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
+                     this.hass?.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
                    });
                  }}
                  @change=${(e: Event) => {
                    e.stopPropagation();
                    const v = parseFloat((e.target as HTMLInputElement).value);
-                   this.hass.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
+                   this.hass?.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
                  }} />
         </div>
       `;
@@ -2604,22 +2665,24 @@ export class AntigravityWithIconCard extends LitElement {
                    const v = parseFloat((e.target as HTMLInputElement).value);
                    const p = maxVal === 1 ? Math.round(v * 100) : (maxVal === 100 ? Math.round(v) : Math.round((v / 255) * 100));
                    const inputEl = e.target as HTMLInputElement;
-                   inputEl.style.setProperty('--slider-pct', `${p}%`);
-                   const container = inputEl.closest('.sub-button-google-slider');
-                   if (container) {
-                     (container as HTMLElement).style.setProperty('--slider-pct', `${p}%`);
-                     container.setAttribute('title', `Level: ${p}%`);
-                     const pctEl = container.querySelector('.sub-slider-pct');
-                     if (pctEl) pctEl.textContent = `${p}%`;
-                   }
+                   requestAnimationFrame(() => {
+                     inputEl.style.setProperty('--slider-pct', `${p}%`);
+                     const container = inputEl.closest('.sub-button-google-slider');
+                     if (container) {
+                       (container as HTMLElement).style.setProperty('--slider-pct', `${p}%`);
+                       container.setAttribute('title', `Level: ${p}%`);
+                       const pctEl = container.querySelector('.sub-slider-pct');
+                       if (pctEl) pctEl.textContent = `${p}%`;
+                     }
+                   });
                    this._throttledCall('sub_slider_' + subEntityId, () => {
-                     this.hass.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
+                     this.hass?.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
                    });
                  }}
                  @change=${(e: Event) => {
                    e.stopPropagation();
                    const v = parseFloat((e.target as HTMLInputElement).value);
-                   this.hass.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
+                   this.hass?.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
                  }} />
           <span class="sub-slider-pct">${pct}%</span>
         </div>
@@ -2715,7 +2778,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = isPlaying ? 'mdi:pause' : 'mdi:play';
           subTitle = isPlaying ? 'Pause' : 'Play';
           defaultAction = () => {
-            this.hass.callService('media_player', 'media_play_pause', { entity_id: entityId || this.config.entity });
+            this.hass?.callService('media_player', 'media_play_pause', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -2723,7 +2786,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = 'mdi:skip-next';
           subTitle = 'Next Track';
           defaultAction = () => {
-            this.hass.callService('media_player', 'media_next_track', { entity_id: entityId || this.config.entity });
+            this.hass?.callService('media_player', 'media_next_track', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -2731,7 +2794,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = 'mdi:skip-previous';
           subTitle = 'Previous Track';
           defaultAction = () => {
-            this.hass.callService('media_player', 'media_previous_track', { entity_id: entityId || this.config.entity });
+            this.hass?.callService('media_player', 'media_previous_track', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -2741,7 +2804,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = isDoorOpen ? 'mdi:window-shutter-open' : 'mdi:window-shutter';
           subTitle = isDoorOpen ? 'Close' : 'Open';
           defaultAction = () => {
-            this.hass.callService('cover', 'toggle', { entity_id: entityId || this.config.entity });
+            this.hass?.callService('cover', 'toggle', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -2749,7 +2812,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = 'mdi:stop';
           subTitle = 'Stop';
           defaultAction = () => {
-            this.hass.callService('cover', 'stop_cover', { entity_id: entityId || this.config.entity });
+            this.hass?.callService('cover', 'stop_cover', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -2759,7 +2822,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = isLocked ? 'mdi:lock' : 'mdi:lock-open-variant';
           subTitle = isLocked ? 'Unlock' : 'Lock';
           defaultAction = () => {
-            this.hass.callService('lock', isLocked ? 'unlock' : 'lock', { entity_id: entityId || this.config.entity });
+            this.hass?.callService('lock', isLocked ? 'unlock' : 'lock', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -2774,7 +2837,7 @@ export class AntigravityWithIconCard extends LitElement {
             if (curPct >= 90) nextPct = 0;
             else if (curPct >= 60) nextPct = 100;
             else if (curPct >= 30) nextPct = 66;
-            this.hass.callService('fan', 'set_percentage', { entity_id: entityId || this.config.entity, percentage: nextPct });
+            this.hass?.callService('fan', 'set_percentage', { entity_id: entityId || this.config.entity, percentage: nextPct });
           };
           break;
         }
@@ -2784,7 +2847,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = isCleaning ? 'mdi:pause' : 'mdi:robot-vacuum';
           subTitle = isCleaning ? 'Pause Vacuum' : 'Start Vacuum';
           defaultAction = () => {
-            this.hass.callService('vacuum', isCleaning ? 'pause' : 'start', { entity_id: entityId || this.config.entity });
+            this.hass?.callService('vacuum', isCleaning ? 'pause' : 'start', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -2792,7 +2855,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = 'mdi:home-import-outline';
           subTitle = 'Return to Dock';
           defaultAction = () => {
-            this.hass.callService('vacuum', 'return_to_base', { entity_id: entityId || this.config.entity });
+            this.hass?.callService('vacuum', 'return_to_base', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -2800,7 +2863,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = 'mdi:map-marker-question-outline';
           subTitle = 'Locate';
           defaultAction = () => {
-            this.hass.callService('vacuum', 'locate', { entity_id: entityId || this.config.entity });
+            this.hass?.callService('vacuum', 'locate', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -2820,7 +2883,7 @@ export class AntigravityWithIconCard extends LitElement {
           subTitle = `Mode: ${curMode} -> Next: ${nextMode}`;
           if (!subLabel) subLabel = curMode;
           defaultAction = () => {
-            this.hass.callService('climate', 'set_hvac_mode', { entity_id: entityId || this.config.entity, hvac_mode: nextMode });
+            this.hass?.callService('climate', 'set_hvac_mode', { entity_id: entityId || this.config.entity, hvac_mode: nextMode });
           };
           break;
         }
@@ -2834,7 +2897,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subLabel) subLabel = curEffect !== 'None' ? curEffect : 'Effect';
           defaultAction = () => {
             if (effects.length > 0) {
-              this.hass.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, effect: nextEffect });
+              this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, effect: nextEffect });
             }
           };
           break;
@@ -2850,7 +2913,7 @@ export class AntigravityWithIconCard extends LitElement {
             if (pct >= 85) nextB = 76;
             else if (pct >= 50) nextB = 255;
             else nextB = 178;
-            this.hass.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, brightness: nextB });
+            this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, brightness: nextB });
           };
           break;
         }
@@ -2860,7 +2923,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = isGarageOpen ? 'mdi:garage-open' : 'mdi:garage';
           subTitle = isGarageOpen ? 'Close Garage' : 'Open Garage';
           defaultAction = () => {
-            this.hass.callService('cover', 'toggle', { entity_id: entityId || this.config.entity });
+            this.hass?.callService('cover', 'toggle', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -2871,7 +2934,7 @@ export class AntigravityWithIconCard extends LitElement {
           subTitle = 'Brightness +10%';
           if (!subLabel) subLabel = '+10%';
           defaultAction = () => {
-            this.hass.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, brightness: nextB });
+            this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, brightness: nextB });
           };
           break;
         }
@@ -2882,7 +2945,7 @@ export class AntigravityWithIconCard extends LitElement {
           subTitle = 'Brightness -10%';
           if (!subLabel) subLabel = '-10%';
           defaultAction = () => {
-            this.hass.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, brightness: nextB });
+            this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, brightness: nextB });
           };
           break;
         }
@@ -2891,7 +2954,7 @@ export class AntigravityWithIconCard extends LitElement {
           subTitle = 'Warm White (2700K)';
           if (!subLabel) subLabel = '2700K';
           defaultAction = () => {
-            this.hass.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, color_temp_kelvin: 2700 });
+            this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, color_temp_kelvin: 2700 });
           };
           break;
         }
@@ -2900,7 +2963,7 @@ export class AntigravityWithIconCard extends LitElement {
           subTitle = 'Cool Daylight (6000K)';
           if (!subLabel) subLabel = '6000K';
           defaultAction = () => {
-            this.hass.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, color_temp_kelvin: 6000 });
+            this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, color_temp_kelvin: 6000 });
           };
           break;
         }
@@ -2914,7 +2977,7 @@ export class AntigravityWithIconCard extends LitElement {
             if (curKelvin < 3300) nextKelvin = 4000;
             else if (curKelvin < 5000) nextKelvin = 6000;
             else nextKelvin = 2700;
-            this.hass.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, color_temp_kelvin: nextKelvin });
+            this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, color_temp_kelvin: nextKelvin });
           };
           break;
         }
@@ -2940,6 +3003,7 @@ export class AntigravityWithIconCard extends LitElement {
         style="${colorStyle} ${subIsActive && dynamicSubColor && showBg ? `background: ${dynamicSubColor}; color: #fff;` : ''}"
         title="${subTitle}"
         @click=${clickHandler}
+        @dblclick=${(e: Event) => e.stopPropagation()}
         @keydown=${(e: KeyboardEvent) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
