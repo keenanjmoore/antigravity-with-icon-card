@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "111";
+export const CARD_VERSION = "112";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -670,8 +670,11 @@ export class AntigravityWithIconCard extends LitElement {
     const domain = entity ? entity.split('.')[0] : '';
     const isStateDynamic = (domain === 'binary_sensor' || domain === 'timer') && (p === 'state' || s === 'state');
     const hasFade = this.config?.fade_transition_enabled === true;
+    const stateObj = entity && this.hass ? this.hass.states[entity] : null;
+    const isLightOn = domain === 'light' && stateObj?.state === 'on';
+    const isFading = hasFade && (isLightOn || (stateObj?.last_changed && (Date.now() - new Date(stateObj.last_changed).getTime()) < 3600000));
     const needsTimer = (
-      hasFade ||
+      isFading ||
       isStateDynamic ||
       p === 'last-changed' || p === 'last_changed' || p === 'last-updated' || p === 'last_updated' ||
       p === 'last-triggered' ||
@@ -679,7 +682,7 @@ export class AntigravityWithIconCard extends LitElement {
       s === 'last-triggered'
     );
     if (needsTimer && !this._relativeTimer) {
-      const intervalMs = hasFade ? 1000 : 5000;
+      const intervalMs = isFading ? 1000 : 5000;
       this._relativeTimer = setInterval(() => {
         if (!this.hasAttribute('offscreen') && this.style.display !== 'none') {
           this.requestUpdate();
@@ -1470,7 +1473,7 @@ export class AntigravityWithIconCard extends LitElement {
 
   // --- GENERIC SLIDER GESTURE & SCROLL DISAMBIGUATION ---
 
-  private _sliderStateMap = new WeakMap<HTMLInputElement, {
+  private _sliderStateMap = new Map<HTMLInputElement, {
     startX: number;
     startY: number;
     initialVal: number;
@@ -1478,6 +1481,7 @@ export class AntigravityWithIconCard extends LitElement {
     initialBadge: string;
     isScrolling: boolean;
     isSliding: boolean;
+    rafPending?: boolean;
   }>();
 
   private _onSliderPointerDown = (e: PointerEvent) => {
@@ -1693,25 +1697,22 @@ export class AntigravityWithIconCard extends LitElement {
   }
 
   private _getLiveHex(stateObj: any): string {
-    // Delegate to _getLightLiveColor and convert rgb() string to hex
+    if (!stateObj?.attributes || stateObj.state !== 'on') return "#ffffff";
+    const attr = stateObj.attributes;
+    if (Array.isArray(attr.rgb_color) && attr.rgb_color.length >= 3) {
+      return rgbToHex(attr.rgb_color);
+    }
+    if (Array.isArray(attr.hs_color) && attr.hs_color.length >= 2) {
+      return rgbToHex(hsToRgb(attr.hs_color[0], attr.hs_color[1]));
+    }
+    if (attr.color_temp_kelvin !== undefined || attr.color_temp !== undefined) {
+      const kelvin = attr.color_temp_kelvin ?? Math.round(1000000 / attr.color_temp);
+      return rgbToHex(kelvinToRgb(kelvin));
+    }
     const liveColor = this._getLightLiveColor(stateObj);
     if (!liveColor) return "#ffffff";
-    const idx = liveColor.indexOf('rgb(');
-    if (idx !== -1) {
-      const endIdx = liveColor.indexOf(')', idx);
-      if (endIdx !== -1) {
-        const parts = liveColor.slice(idx + 4, endIdx).split(',');
-        if (parts.length >= 3) {
-          return rgbToHex([parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2], 10)]);
-        }
-      }
-    }
-    // Fallback: check raw attributes directly
-    if (!stateObj?.attributes) return "#ffffff";
-    if (Array.isArray(stateObj.attributes.rgb_color) && stateObj.attributes.rgb_color.length >= 3) {
-      return rgbToHex(stateObj.attributes.rgb_color);
-    }
-    return "#ffffff";
+    const rgb = parseColorToRgb(liveColor);
+    return rgb ? rgbToHex(rgb) : "#ffffff";
   }
 
   private _getLiveHue(stateObj: any): number {
