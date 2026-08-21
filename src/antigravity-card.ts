@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "114";
+export const CARD_VERSION = "115";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -569,10 +569,10 @@ export class AntigravityWithIconCard extends LitElement {
     const txtTransformSecondary = `text-transform: ${this.config.text_transform_secondary ?? 'capitalize'};`;
     const letterSpacingStyle = this.config.letter_spacing ? `letter-spacing: ${this.config.letter_spacing}px;` : '';
     const lineHeightStyle = this.config.line_height ? `line-height: ${this.config.line_height};` : '';
-    const primaryWeight = this.config.font_weight_primary ?? 'bold';
+    const primaryWeight = this.config.font_weight_primary ?? '800';
 
     this._primaryTextStyle = `font-size: ${this.config.font_size_primary ?? 14}px; font-weight: ${primaryWeight}; ${txtTransformPrimary} ${letterSpacingStyle} ${lineHeightStyle}`;
-    this._secondaryTextStyle = `font-size: ${this.config.font_size_secondary ?? 12}px; ${txtTransformSecondary} ${letterSpacingStyle} ${lineHeightStyle}`;
+    this._secondaryTextStyle = `font-size: ${this.config.font_size_secondary ?? 15}px; ${txtTransformSecondary} ${letterSpacingStyle} ${lineHeightStyle}`;
 
     this._iconShapeClass = `icon-shape-${this.config.icon_shape || 'circle'}`;
     this._iconAnimClass = `anim-${this.config.icon_animation || 'none'}`;

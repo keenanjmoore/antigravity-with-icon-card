@@ -804,12 +804,12 @@ const mt = {
   text_offset_y: 2,
   primary_text_offset_x: 0,
   primary_text_offset_y: 0,
-  primary_text_start_offset: 0,
-  primary_text_end_offset: 0,
+  primary_text_start_offset: 8,
+  primary_text_end_offset: 250,
   secondary_text_offset_x: 0,
   secondary_text_offset_y: 0,
-  secondary_text_start_offset: 0,
-  secondary_text_end_offset: 0,
+  secondary_text_start_offset: 8,
+  secondary_text_end_offset: 250,
   icon_offset_x: 0,
   icon_offset_y: 0,
   features_offset_x: 0,
@@ -1837,7 +1837,7 @@ var oo = Object.defineProperty, ro = Object.getOwnPropertyDescriptor, ie = (t, e
     (a = t[n]) && (r = (o ? a(e, i, r) : a(r)) || r);
   return o && r && oo(e, i, r), r;
 };
-const no = "114";
+const no = "115";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${no} `,
   "color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;",
@@ -2232,8 +2232,8 @@ let z = class extends le {
       Xe ? `margin-left: ${Xe}px !important;` : "",
       re ? `margin-right: ${re}px !important;` : ""
     ].filter(Boolean).join(" "), this._textBoxWidth = this.config.text_box_width ? `max-width: ${this.config.text_box_width}; width: ${this.config.text_box_width};` : "width: 100%; max-width: 100%;";
-    const F = this.config.text_transform_primary && this.config.text_transform_primary !== "none" ? `text-transform: ${this.config.text_transform_primary};` : "", G = `text-transform: ${this.config.text_transform_secondary ?? "capitalize"};`, B = this.config.letter_spacing ? `letter-spacing: ${this.config.letter_spacing}px;` : "", ve = this.config.line_height ? `line-height: ${this.config.line_height};` : "", ct = this.config.font_weight_primary ?? "bold";
-    this._primaryTextStyle = `font-size: ${this.config.font_size_primary ?? 14}px; font-weight: ${ct}; ${F} ${B} ${ve}`, this._secondaryTextStyle = `font-size: ${this.config.font_size_secondary ?? 12}px; ${G} ${B} ${ve}`, this._iconShapeClass = `icon-shape-${this.config.icon_shape || "circle"}`, this._iconAnimClass = `anim-${this.config.icon_animation || "none"}`, this._iconContainerSize = this.config.icon_container_size ?? (this.config.card_layout === "large" ? 48 : 36), this._iconSize = this.config.icon_size ?? 24, this._iconOpacityStyle = this.config.icon_opacity !== void 0 && this.config.icon_opacity < 100 ? `opacity: ${this.config.icon_opacity / 100};` : "", this._iconRotateStyle = this.config.icon_rotate && this.config.icon_rotate !== 0 ? `transform: rotate(${this.config.icon_rotate}deg);` : "";
+    const F = this.config.text_transform_primary && this.config.text_transform_primary !== "none" ? `text-transform: ${this.config.text_transform_primary};` : "", G = `text-transform: ${this.config.text_transform_secondary ?? "capitalize"};`, B = this.config.letter_spacing ? `letter-spacing: ${this.config.letter_spacing}px;` : "", ve = this.config.line_height ? `line-height: ${this.config.line_height};` : "", ct = this.config.font_weight_primary ?? "800";
+    this._primaryTextStyle = `font-size: ${this.config.font_size_primary ?? 14}px; font-weight: ${ct}; ${F} ${B} ${ve}`, this._secondaryTextStyle = `font-size: ${this.config.font_size_secondary ?? 15}px; ${G} ${B} ${ve}`, this._iconShapeClass = `icon-shape-${this.config.icon_shape || "circle"}`, this._iconAnimClass = `anim-${this.config.icon_animation || "none"}`, this._iconContainerSize = this.config.icon_container_size ?? (this.config.card_layout === "large" ? 48 : 36), this._iconSize = this.config.icon_size ?? 24, this._iconOpacityStyle = this.config.icon_opacity !== void 0 && this.config.icon_opacity < 100 ? `opacity: ${this.config.icon_opacity / 100};` : "", this._iconRotateStyle = this.config.icon_rotate && this.config.icon_rotate !== 0 ? `transform: rotate(${this.config.icon_rotate}deg);` : "";
     const dt = this.config.entity, ye = [];
     for (let M = 1; M <= 4; M++) {
       const W = this.config[`sub_button_${M}_entity`], D = this.config[`sub_button_${M}_icon`], ne = this.config[`sub_button_${M}_name`], Z = this.config[`sub_button_${M}_tap_action`], A = this.config[`sub_button_${M}_hold_action`], xe = this.config[`sub_button_${M}_double_tap_action`], ut = this.config[`sub_button_${M}_type`], ii = this.config[`sub_button_${M}_color`], oi = this.config[`sub_button_${M}_show_background`], Ct = this.config[`sub_button_${M}_show_state`];
