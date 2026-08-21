@@ -1837,7 +1837,7 @@ var oo = Object.defineProperty, ro = Object.getOwnPropertyDescriptor, re = (t, e
     (a = t[n]) && (r = (o ? a(e, i, r) : a(r)) || r);
   return o && r && oo(e, i, r), r;
 };
-const no = "122";
+const no = "123";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${no} `,
   "color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;",
@@ -2581,7 +2581,7 @@ let U = class extends ce {
   _dispatchAction(t, e, i) {
     const o = i || this.config.entity, r = o ? o.split(".")[0] : "", n = co.has(r);
     let a = e;
-    if (a || (t === "double_tap" ? a = this.config.double_tap_action : t === "hold" ? a = this.config.hold_action : this.config.tap_action ? a = this.config.tap_action : a = n ? { action: "more-info" } : { action: "toggle" }), !(!a || a.action === "none")) {
+    if (a || (t === "double_tap" ? a = this.config.double_tap_action : t === "hold" ? a = this.config.hold_action || (n ? { action: "more-info" } : { action: "toggle" }) : this.config.tap_action && this.config.tap_action.action && this.config.tap_action.action !== "default" ? n && this.config.tap_action.action === "toggle" ? a = { action: "none" } : a = this.config.tap_action : a = n ? { action: "none" } : { action: "toggle" }), !(!a || a.action === "none")) {
       if (a.action === "more-info") {
         const l = a.entity || o;
         if (l) {
@@ -2594,14 +2594,8 @@ let U = class extends ce {
         }
       }
       if (a.action === "toggle" && o) {
-        if (n) {
-          this.dispatchEvent(new CustomEvent("hass-more-info", {
-            detail: { entityId: o },
-            bubbles: !0,
-            composed: !0
-          }));
+        if (n)
           return;
-        }
         const l = r === "lock" ? this._isEntityActive(this.hass?.states[o]) ? "lock" : "unlock" : "toggle", s = ["lock", "cover"].includes(r) ? r : r === "group" ? "homeassistant" : r;
         this.hass?.callService(s, l, { entity_id: o });
         return;
@@ -2623,20 +2617,12 @@ let U = class extends ce {
         this.hass?.callService(l, s, a.data || a.service_data || {}, a.target);
         return;
       }
-      if (n && (!a.action || a.action === "toggle")) {
-        this.dispatchEvent(new CustomEvent("hass-more-info", {
-          detail: { entityId: o },
-          bubbles: !0,
-          composed: !0
-        }));
-        return;
-      }
-      Wt(this, this.hass, { ...this.config, entity: o }, t);
+      n && (!a.action || a.action === "toggle") || Wt(this, this.hass, { ...this.config, entity: o }, t);
     }
   }
   _handleTap(t) {
     if (t.stopPropagation(), this._isSubElement(t)) return;
-    if (Date.now() - this._mountTime < 650) {
+    if (Date.now() - this._mountTime < 1500) {
       this._pointerDownReceived = !1;
       return;
     }
@@ -2664,14 +2650,14 @@ let U = class extends ce {
     }, 250);
   }
   _handleKeyDown(t) {
-    this._isSubElement(t) || Date.now() - this._mountTime < 1e3 || (t.key === "Enter" || t.key === " ") && (t.preventDefault(), L("light", this.config.haptic_feedback !== !1), this._dispatchAction("tap"));
+    this._isSubElement(t) || Date.now() - this._mountTime < 1500 || (t.key === "Enter" || t.key === " ") && (t.preventDefault(), L("light", this.config.haptic_feedback !== !1), this._dispatchAction("tap"));
   }
   _handleContextMenu(t) {
-    if (t.preventDefault(), t.stopPropagation(), Date.now() - this._mountTime < 650 || this._held) return;
+    if (t.preventDefault(), t.stopPropagation(), Date.now() - this._mountTime < 1500 || this._held) return;
     L("medium", this.config.haptic_feedback !== !1), (this.config.collapse_controls_trigger || "hold") === "hold" && this._hasCollapsible() ? this._collapsed = !this._collapsed : this.config.hold_action && this.config.hold_action.action !== "none" && this._dispatchAction("hold");
   }
   _handlePointerDown(t) {
-    this._isSubElement(t) || Date.now() - this._mountTime < 650 || (this._pointerDownReceived = !0, this._held = !1, this._moved = !1, this._canceled = !1, this._startX = t.clientX, this._startY = t.clientY, this._holdTimer = setTimeout(() => {
+    this._isSubElement(t) || Date.now() - this._mountTime < 1500 || (this._pointerDownReceived = !0, this._held = !1, this._moved = !1, this._canceled = !1, this._startX = t.clientX, this._startY = t.clientY, this._holdTimer = setTimeout(() => {
       if (this._moved || this._canceled) return;
       this._held = !0, this._holdTimer = null, this._tapTimer && (clearTimeout(this._tapTimer), this._tapTimer = null), L("heavy", this.config.haptic_feedback !== !1), (this.config.collapse_controls_trigger || "hold") === "hold" && this._hasCollapsible() ? this._collapsed = !this._collapsed : this.config.hold_action && this.config.hold_action.action !== "none" && this._dispatchAction("hold");
     }, 500));
