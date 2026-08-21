@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "113";
+export const CARD_VERSION = "114";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -402,6 +402,8 @@ export class AntigravityWithIconCard extends LitElement {
   private _textBoxWidth = '';
   private _primaryTextStyle = '';
   private _secondaryTextStyle = '';
+  private _primaryTextOffsetStyle = '';
+  private _secondaryTextOffsetStyle = '';
   private _iconShapeClass = '';
   private _iconAnimClass = '';
   private _iconContainerSize = 36;
@@ -517,6 +519,20 @@ export class AntigravityWithIconCard extends LitElement {
     const textOffsetX = Number(this.config.text_offset_x) || 0;
     const textOffsetY = Number(this.config.text_offset_y) || 0;
     this._textOffsetStyle = textOffsetX !== 0 || textOffsetY !== 0 ? `transform: translate(${textOffsetX}px, ${textOffsetY}px);` : '';
+
+    const pStartX = Number(this.config.primary_text_start_offset ?? this.config.primary_text_offset_x) || 0;
+    const pEndX = Number(this.config.primary_text_end_offset) || 0;
+    const pOffsetY = Number(this.config.primary_text_offset_y) || 0;
+    const pTrans = (pStartX !== 0 || pOffsetY !== 0) ? `transform: translate(${pStartX}px, ${pOffsetY}px);` : '';
+    const pMargin = (pStartX !== 0 || pEndX !== 0) ? `margin-left: ${pStartX}px; margin-right: ${pEndX}px;` : '';
+    this._primaryTextOffsetStyle = `${pTrans} ${pMargin}`.trim();
+
+    const sStartX = Number(this.config.secondary_text_start_offset ?? this.config.secondary_text_offset_x) || 0;
+    const sEndX = Number(this.config.secondary_text_end_offset) || 0;
+    const sOffsetY = Number(this.config.secondary_text_offset_y) || 0;
+    const sTrans = (sStartX !== 0 || sOffsetY !== 0) ? `transform: translate(${sStartX}px, ${sOffsetY}px);` : '';
+    const sMargin = (sStartX !== 0 || sEndX !== 0) ? `margin-left: ${sStartX}px; margin-right: ${sEndX}px;` : '';
+    this._secondaryTextOffsetStyle = `${sTrans} ${sMargin}`.trim();
 
     const iconOffsetX = Number(this.config.icon_offset_x) || 0;
     const iconOffsetY = Number(this.config.icon_offset_y) || 0;
@@ -2072,11 +2088,11 @@ export class AntigravityWithIconCard extends LitElement {
             ` : nothing}
             <div class="info" style="${this._textOffsetStyle} ${this._textBoxWidth} text-align: var(--ag-text-alignment);">
               ${primaryText ? html`
-                <div class="text-marquee-container scroll-${scrollPrimary}">
+                <div class="text-marquee-container scroll-${scrollPrimary}" style="${this._primaryTextOffsetStyle}">
                   <span class="primary scroll-content" style="${this._primaryTextStyle}">${primaryText}</span>
                 </div>` : nothing}
               ${secondaryText ? html`
-                <div class="text-marquee-container scroll-${scrollSecondary}">
+                <div class="text-marquee-container scroll-${scrollSecondary}" style="${this._secondaryTextOffsetStyle}">
                   <span class="secondary scroll-content" style="${this._secondaryTextStyle}">${secondaryText}</span>
                 </div>` : nothing}
             </div>
