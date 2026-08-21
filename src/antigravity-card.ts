@@ -20,9 +20,9 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "103";
+export const CARD_VERSION = "110";
 console.info(
-  `%c 🚀 ANTIGRAVITY-CARD %c v${CARD_VERSION} `,
+  `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'color: #6200ea; background: #ede7f6; font-weight: 700; padding: 2px 6px; border-radius: 0 4px 4px 0;'
 );
@@ -246,6 +246,16 @@ export interface FadeCalculationResult {
   stageLabel: string;
 }
 
+const DISABLED_FADE_RESULT: FadeCalculationResult = Object.freeze({
+  enabled: false,
+  activeFade: false,
+  currentColor: '',
+  progressPct: 0,
+  remainingSeconds: 0,
+  currentStage: 0,
+  stageLabel: ''
+});
+
 // ---- Safe Haptic Dispatcher ----
 function safeForwardHaptic(type: any, enabled = true) {
   if (!enabled) return;
@@ -372,6 +382,13 @@ export class AntigravityWithIconCard extends LitElement {
 
   private _staticCardStyles = '';
   private _staticCardClasses = '';
+  private _textOffsetStyle = '';
+  private _iconOffsetStyle = '';
+  private _featuresOffsetStyle = '';
+  private _mainSliderMarginOffsets = '';
+  private _textBoxWidth = '';
+  private _primaryTextStyle = '';
+  private _secondaryTextStyle = '';
 
   private _computeStaticStylesAndClasses() {
     if (!this.config) return;
@@ -479,6 +496,36 @@ export class AntigravityWithIconCard extends LitElement {
       `slider-style-${this.config.slider_style ?? 'circle'}`,
       this.config.text_color_mode === 'inverse' ? 'text-color-mode-inverse' : ''
     ].filter(Boolean).join(' ');
+
+    const textOffsetX = Number(this.config.text_offset_x) || 0;
+    const textOffsetY = Number(this.config.text_offset_y) || 0;
+    this._textOffsetStyle = textOffsetX !== 0 || textOffsetY !== 0 ? `transform: translate(${textOffsetX}px, ${textOffsetY}px);` : '';
+
+    const iconOffsetX = Number(this.config.icon_offset_x) || 0;
+    const iconOffsetY = Number(this.config.icon_offset_y) || 0;
+    this._iconOffsetStyle = iconOffsetX !== 0 || iconOffsetY !== 0 ? `transform: translate(${iconOffsetX}px, ${iconOffsetY}px);` : '';
+
+    const featuresOffsetX = Number(this.config.features_offset_x) || 0;
+    const featuresOffsetY = Number(this.config.features_offset_y) || 0;
+    this._featuresOffsetStyle = featuresOffsetX !== 0 || featuresOffsetY !== 0 ? `transform: translate(${featuresOffsetX}px, ${featuresOffsetY}px);` : '';
+
+    const mainStartOffset = Number(this.config.slider_start_offset) || 0;
+    const mainEndOffset = Number(this.config.slider_end_offset) || 0;
+    this._mainSliderMarginOffsets = [
+      mainStartOffset ? `margin-left: ${mainStartOffset}px !important;` : '',
+      mainEndOffset ? `margin-right: ${mainEndOffset}px !important;` : ''
+    ].filter(Boolean).join(' ');
+
+    this._textBoxWidth = this.config.text_box_width ? `max-width: ${this.config.text_box_width}; width: ${this.config.text_box_width};` : 'width: 100%; max-width: 100%;';
+
+    const txtTransformPrimary = this.config.text_transform_primary && this.config.text_transform_primary !== 'none' ? `text-transform: ${this.config.text_transform_primary};` : '';
+    const txtTransformSecondary = `text-transform: ${this.config.text_transform_secondary ?? 'capitalize'};`;
+    const letterSpacingStyle = this.config.letter_spacing ? `letter-spacing: ${this.config.letter_spacing}px;` : '';
+    const lineHeightStyle = this.config.line_height ? `line-height: ${this.config.line_height};` : '';
+    const primaryWeight = this.config.font_weight_primary ?? 'bold';
+
+    this._primaryTextStyle = `font-size: ${this.config.font_size_primary ?? 14}px; font-weight: ${primaryWeight}; ${txtTransformPrimary} ${letterSpacingStyle} ${lineHeightStyle}`;
+    this._secondaryTextStyle = `font-size: ${this.config.font_size_secondary ?? 12}px; ${txtTransformSecondary} ${letterSpacingStyle} ${lineHeightStyle}`;
   }
 
   // --- PERFORMANCE: Zero-allocation re-render check ---
@@ -731,18 +778,8 @@ export class AntigravityWithIconCard extends LitElement {
     defaultActiveStr: string,
     defaultInactiveStr: string
   ): FadeCalculationResult {
-    const disabledResult: FadeCalculationResult = {
-      enabled: false,
-      activeFade: false,
-      currentColor: '',
-      progressPct: 0,
-      remainingSeconds: 0,
-      currentStage: 0,
-      stageLabel: ''
-    };
-
     if (!this.config?.fade_transition_enabled || !stateObj) {
-      return disabledResult;
+      return DISABLED_FADE_RESULT;
     }
 
     const isActive = this._isEntityActive(stateObj);
@@ -754,7 +791,7 @@ export class AntigravityWithIconCard extends LitElement {
                        (trigger === 'both');
 
     if (!shouldFade) {
-      return disabledResult;
+      return DISABLED_FADE_RESULT;
     }
 
     // Determine base colors
@@ -797,12 +834,12 @@ export class AntigravityWithIconCard extends LitElement {
 
     const totalDuration = d1 + d2 + d3;
     if (totalDuration <= 0) {
-      return disabledResult;
+      return DISABLED_FADE_RESULT;
     }
 
     const lastChangedDate = this._parseDate(stateObj.last_changed || stateObj.last_updated);
     if (!lastChangedDate) {
-      return disabledResult;
+      return DISABLED_FADE_RESULT;
     }
 
     const elapsed = Math.max(0, (Date.now() - lastChangedDate.getTime()) / 1000);
@@ -1584,7 +1621,7 @@ export class AntigravityWithIconCard extends LitElement {
   }
 
   private _getLightLiveColor(stateObj: any): string | null {
-    if (!stateObj || !stateObj.attributes) return null;
+    if (!stateObj || !stateObj.attributes || stateObj.state !== 'on') return null;
     const attr = stateObj.attributes;
     const colorMode = attr.color_mode;
 
@@ -1857,7 +1894,9 @@ export class AntigravityWithIconCard extends LitElement {
     // Typography
     const primaryWeight = this.config.font_weight_primary ?? 'bold';
     let overrideTextVars = '';
-    if (this.config.text_color_primary) {
+    if (this.config.text_color_mode === 'active_accent' && isActive) {
+      overrideTextVars += `--primary-text-color: ${activeColor}; `;
+    } else if (this.config.text_color_primary) {
       overrideTextVars += `--primary-text-color: ${this._resolveColor(this.config.text_color_primary)}; `;
     } else if (colorTypeIsCard && isActive) {
       overrideTextVars += `--primary-text-color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.4); `;
@@ -1868,34 +1907,6 @@ export class AntigravityWithIconCard extends LitElement {
     } else if (colorTypeIsCard && isActive) {
       overrideTextVars += `--secondary-text-color: rgba(255, 255, 255, 0.9); text-shadow: 0 1px 2px rgba(0,0,0,0.3); `;
     }
-
-    const textOffsetX = Number(this.config.text_offset_x) || 0;
-    const textOffsetY = Number(this.config.text_offset_y) || 0;
-    const textOffsetStyle = textOffsetX !== 0 || textOffsetY !== 0 ? `transform: translate(${textOffsetX}px, ${textOffsetY}px);` : '';
-
-    const iconOffsetX = Number(this.config.icon_offset_x) || 0;
-    const iconOffsetY = Number(this.config.icon_offset_y) || 0;
-    const iconOffsetStyle = iconOffsetX !== 0 || iconOffsetY !== 0 ? `transform: translate(${iconOffsetX}px, ${iconOffsetY}px);` : '';
-
-    const featuresOffsetX = Number(this.config.features_offset_x) || 0;
-    const featuresOffsetY = Number(this.config.features_offset_y) || 0;
-    const featuresOffsetStyle = featuresOffsetX !== 0 || featuresOffsetY !== 0 ? `transform: translate(${featuresOffsetX}px, ${featuresOffsetY}px);` : '';
-
-    const pRight = this.config.card_padding_right ?? this.config.card_padding_horizontal ?? (this.config.card_padding ?? 12);
-    let textBoxWidth = '';
-    if (this.config.text_box_width) {
-      textBoxWidth = `max-width: ${this.config.text_box_width}; width: ${this.config.text_box_width};`;
-    } else if (textOffsetX < 0) {
-      const extraWidth = Math.abs(textOffsetX) + Math.max(0, pRight - 4);
-      textBoxWidth = `width: calc(100% + ${extraWidth}px); max-width: calc(100% + ${extraWidth}px);`;
-    } else {
-      textBoxWidth = `width: 100%; max-width: 100%;`;
-    }
-
-    const txtTransformPrimary = this.config.text_transform_primary && this.config.text_transform_primary !== 'none' ? `text-transform: ${this.config.text_transform_primary};` : '';
-    const txtTransformSecondary = `text-transform: ${this.config.text_transform_secondary ?? 'capitalize'};`;
-    const letterSpacingStyle = this.config.letter_spacing ? `letter-spacing: ${this.config.letter_spacing}px;` : '';
-    const lineHeightStyle = this.config.line_height ? `line-height: ${this.config.line_height};` : '';
 
     const isInline = this.config.features_position === 'inline';
     const iconSize = this.config.icon_size ?? 24;
@@ -1925,13 +1936,7 @@ export class AntigravityWithIconCard extends LitElement {
 
     const hasMainSlider = showLightSlider || showCoverSlider || showFanSlider || showHumidifierSlider || showMediaSlider || showNumberSlider || showClimateSlider;
     const hasSecondarySliders = showColorTemp || showColorSlider || showColorWheel;
-
-    const mainStartOffset = Number(this.config.slider_start_offset) || 0;
-    const mainEndOffset = Number(this.config.slider_end_offset) || 0;
-    const mainSliderMarginOffsets = [
-      mainStartOffset ? `margin-left: ${mainStartOffset}px !important;` : '',
-      mainEndOffset ? `margin-right: ${mainEndOffset}px !important;` : ''
-    ].filter(Boolean).join(' ');
+    const hasCollapsible = (!isInline && hasSecondarySliders) || subButtons.length > 0;
 
     const decayPos = this.config.decay_slider_position ?? 'bottom';
 
@@ -1956,7 +1961,7 @@ export class AntigravityWithIconCard extends LitElement {
           <div class="info-container">
             ${showIconArea ? html`
               <div class="icon-container ${iconShapeClass} ${iconAnimClass} ${this.config.active_pulse && isActive ? 'pulse' : ''} ${(this.config.active_glow || this.config.box_shadow === 'glow') && (isActive || multiStageFade.activeFade) ? 'glow' : ''}" 
-                   style="${iconOffsetStyle} ${iconColorStyle} ${iconOpacityStyle} background-color: ${effectiveIconBg}; width: ${containerSize}px; height: ${containerSize}px; --mdc-icon-size: ${iconSize}px; ${!isAvailable ? 'opacity: 0.5; pointer-events: none;' : ''}" 
+                   style="${this._iconOffsetStyle} ${iconColorStyle} ${iconOpacityStyle} background-color: ${effectiveIconBg}; width: ${containerSize}px; height: ${containerSize}px; --mdc-icon-size: ${iconSize}px; ${!isAvailable ? 'opacity: 0.5; pointer-events: none;' : ''}" 
                    ?active=${isActive}>
                 ${iconType === 'entity-picture' && stateObj.attributes.entity_picture
                   ? html`<img class="entity-picture ${iconShapeClass}" src="${stateObj.attributes.entity_picture}" style="width: ${iconSize}px; height: ${iconSize}px; ${iconRotateStyle}" />`
@@ -1974,37 +1979,39 @@ export class AntigravityWithIconCard extends LitElement {
                 ` : nothing}
               </div>
             ` : nothing}
-            <div class="info" style="${textOffsetStyle} ${textBoxWidth} text-align: var(--ag-text-alignment);">
+            <div class="info" style="${this._textOffsetStyle} ${this._textBoxWidth} text-align: var(--ag-text-alignment);">
               ${primaryText ? html`
                 <div class="text-marquee-container scroll-${scrollPrimary}">
-                  <span class="primary scroll-content" style="font-size: ${this.config.font_size_primary ?? 14}px; font-weight: ${primaryWeight}; ${txtTransformPrimary} ${letterSpacingStyle} ${lineHeightStyle}">${primaryText}</span>
+                  <span class="primary scroll-content" style="${this._primaryTextStyle}">${primaryText}</span>
                 </div>` : nothing}
               ${secondaryText ? html`
                 <div class="text-marquee-container scroll-${scrollSecondary}">
-                  <span class="secondary scroll-content" style="font-size: ${this.config.font_size_secondary ?? 12}px; ${txtTransformSecondary} ${letterSpacingStyle} ${lineHeightStyle}">${secondaryText}</span>
+                  <span class="secondary scroll-content" style="${this._secondaryTextStyle}">${secondaryText}</span>
                 </div>` : nothing}
             </div>
             ${decayPos === 'inline' ? html`<div class="inline-sliders">${this._renderDecaySlider(multiStageFade)}</div>` : nothing}
-            ${isInline && hasMainSlider ? html`<div class="inline-sliders" style="${mainSliderMarginOffsets}">${mainSliderBlock}</div>` : nothing}
+            ${isInline && hasMainSlider ? html`<div class="inline-sliders" style="${this._mainSliderMarginOffsets}">${mainSliderBlock}</div>` : nothing}
             ${isInline && hasSecondarySliders ? html`<div class="inline-sliders ${this._collapsed ? 'collapsed' : ''}">${secondarySliderBlock}</div>` : nothing}
           </div>
           
           ${decayPos === 'bottom' ? this._renderDecaySlider(multiStageFade) : nothing}
-          ${!isInline && hasMainSlider ? html`<div class="features-container" style="${featuresOffsetStyle} ${mainSliderMarginOffsets}">${mainSliderBlock}</div>` : nothing}
+          ${!isInline && hasMainSlider ? html`<div class="features-container" style="${this._featuresOffsetStyle} ${this._mainSliderMarginOffsets}">${mainSliderBlock}</div>` : nothing}
 
-          <div class="collapsible-wrapper ${this._collapsed ? 'collapsed' : ''}">
-            ${!isInline && hasSecondarySliders ? html`<div class="features-container" style="${featuresOffsetStyle}">${secondarySliderBlock}</div>` : nothing}
+          ${hasCollapsible ? html`
+            <div class="collapsible-wrapper ${this._collapsed ? 'collapsed' : ''}">
+              ${!isInline && hasSecondarySliders ? html`<div class="features-container" style="${this._featuresOffsetStyle}">${secondarySliderBlock}</div>` : nothing}
 
-            ${subButtons.length > 0 ? html`
-              <div class="sub-buttons-container">
-                ${repeat(
-                  subButtons,
-                  (sb) => sb.key,
-                  (sb) => this._renderSubButton(sb.entity || '', sb.icon, sb.color, sb.bg !== false, sb.name, sb.tapAction, sb.holdAction, sb.type, sb.doubleTapAction, sb.showState)
-                )}
-              </div>
-            ` : nothing}
-          </div>
+              ${subButtons.length > 0 ? html`
+                <div class="sub-buttons-container">
+                  ${repeat(
+                    subButtons,
+                    (sb) => sb.key,
+                    (sb) => this._renderSubButton(sb.entity || '', sb.icon, sb.color, sb.bg !== false, sb.name, sb.tapAction, sb.holdAction, sb.type, sb.doubleTapAction, sb.showState)
+                  )}
+                </div>
+              ` : nothing}
+            </div>
+          ` : nothing}
 
         </div>
       </ha-card>
@@ -2051,8 +2058,9 @@ export class AntigravityWithIconCard extends LitElement {
     badgeContent?: TemplateResult | string
   ) {
     const isGoogle = this.config.slider_style === 'google';
-    const showPercent = isGoogle || this.config.show_slider_percent === true;
+    const showPercent = (isGoogle && this.config.show_slider_percent !== false) || this.config.show_slider_percent === true;
     const defaultBadgeText = labelFormatter ? labelFormatter(val, pct) : `${pct}%`;
+    const finalBadge = badgeContent !== undefined ? badgeContent : defaultBadgeText;
 
     const effectiveStep = (this.config.slider_stepped_movement === false) ? 'any' : step;
 
@@ -2094,7 +2102,7 @@ export class AntigravityWithIconCard extends LitElement {
                @pointercancel=${this._onSliderPointerCancel}
                @input=${(e: Event) => this._sliderInput(e, key, domain, service, dataFn, pctCalc, labelFormatter)}
                @change=${(e: Event) => this._sliderChange(e, domain, service, dataFn)} />
-        ${showPercent ? html`<span class="slider-percent-badge">${badgeContent || defaultBadgeText}</span>` : nothing}
+        ${showPercent && finalBadge ? html`<span class="slider-percent-badge">${finalBadge}</span>` : nothing}
       </div>
     `;
   }
@@ -2102,13 +2110,14 @@ export class AntigravityWithIconCard extends LitElement {
   // --- MULTI-DOMAIN SLIDER RENDERERS ---
 
   private _renderLightSlider(stateObj: any) {
+    const isActive = this._isEntityActive(stateObj);
     const val = stateObj.attributes.brightness ?? 0;
     const pct = Math.max(0, Math.min(100, Math.round((val / 255) * 100)));
     const liveColor = this._getLightLiveColor(stateObj);
     const sliderColorStyle = (this.config.use_light_color !== false || !this.config.slider_color) && liveColor ? `--slider-color: ${liveColor};` : '';
     return this._renderGenericSlider(
       'brightness', 'Brightness', 0, 255, 1, val, pct, 'light', 'turn_on',
-      (v) => ({ brightness: v }), (v) => Math.round((v / 255) * 100), (_, p) => (p <= 1 ? 'Off' : `${p}%`),
+      (v) => ({ brightness: v }), (v) => Math.round((v / 255) * 100), (_, p) => (!isActive || p <= 0 ? '' : `${p}%`),
       '', sliderColorStyle
     );
   }
@@ -3733,3 +3742,8 @@ export class AntigravityWithIconCard extends LitElement {
     `;
   }
 }
+
+if (!customElements.get('antigravity-with-icon-card')) {
+  customElements.define('antigravity-with-icon-card', AntigravityWithIconCard);
+}
+

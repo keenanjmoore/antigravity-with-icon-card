@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { fireEvent } from 'custom-card-helpers';
 import type { AntigravityCardConfig } from './types';
@@ -91,6 +91,8 @@ const SCHEMA_APPEARANCE = [
   { name: 'bg_opacity', selector: { number: { min: 0, max: 100, mode: 'slider' } } },
   { name: 'active_color', selector: { color_rgb: {} } },
   { name: 'inactive_color', selector: { color_rgb: {} } },
+  { name: 'text_color_primary', selector: { color_rgb: {} } },
+  { name: 'text_color_secondary', selector: { color_rgb: {} } },
   { name: 'card_border_width', selector: { number: { min: 0, max: 20, mode: 'slider' } } },
   { name: 'card_border_color', selector: { color_rgb: {} } },
   { name: 'card_border_style', selector: { select: { options: [
@@ -490,7 +492,6 @@ function cssToRgbArray(color: any): number[] | undefined {
   return [r, g, b];
 }
 
-@customElement('antigravity-with-icon-card-editor')
 export class AntigravityWithIconCardEditor extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: AntigravityCardConfig;
@@ -1018,3 +1019,8 @@ export class AntigravityWithIconCardEditor extends LitElement {
     `;
   }
 }
+
+if (!customElements.get('antigravity-with-icon-card-editor')) {
+  customElements.define('antigravity-with-icon-card-editor', AntigravityWithIconCardEditor);
+}
+
