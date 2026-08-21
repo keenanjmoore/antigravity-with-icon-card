@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "117";
+export const CARD_VERSION = "118";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -1728,41 +1728,35 @@ export class AntigravityWithIconCard extends LitElement {
     const attr = stateObj.attributes;
     const colorMode = attr.color_mode;
 
-    // 1. If explicit color_temp mode, use color temperature
-    if (colorMode === 'color_temp') {
+    // 1. True RGB/Colored lights (hs, rgb, xy, rgbw, rgbww) - only when saturated color mode is active!
+    const isRgbColorMode = colorMode === 'hs' || colorMode === 'rgb' || colorMode === 'xy' || colorMode === 'rgbw' || colorMode === 'rgbww';
+    
+    if (isRgbColorMode) {
+      if (Array.isArray(attr.rgb_color) && attr.rgb_color.length >= 3) {
+        return `rgb(${attr.rgb_color[0]}, ${attr.rgb_color[1]}, ${attr.rgb_color[2]})`;
+      }
+      if (Array.isArray(attr.hs_color) && attr.hs_color.length >= 2) {
+        const [r, g, b] = hsToRgb(attr.hs_color[0], attr.hs_color[1]);
+        return `rgb(${r}, ${g}, ${b})`;
+      }
+      if (Array.isArray(attr.rgbw_color) && attr.rgbw_color.length >= 3) {
+        return `rgb(${attr.rgbw_color[0]}, ${attr.rgbw_color[1]}, ${attr.rgbw_color[2]})`;
+      }
+      if (Array.isArray(attr.rgbww_color) && attr.rgbww_color.length >= 3) {
+        return `rgb(${attr.rgbww_color[0]}, ${attr.rgbww_color[1]}, ${attr.rgbww_color[2]})`;
+      }
+    }
+
+    // 2. If use_light_color is explicitly true, allow kelvin color temp calculation
+    if (this.config.use_light_color && (colorMode === 'color_temp' || attr.color_temp_kelvin !== undefined || attr.color_temp !== undefined)) {
       const kelvin = attr.color_temp_kelvin ?? (attr.color_temp ? Math.round(1000000 / attr.color_temp) : 3000);
       const [r, g, b] = kelvinToRgb(kelvin);
       return `rgb(${r}, ${g}, ${b})`;
     }
 
-    // 2. If RGB / HS / XY / RGBW / RGBWW or rgb_color is present, prioritize RGB color!
-    if (Array.isArray(attr.rgb_color) && attr.rgb_color.length >= 3) {
-      return `rgb(${attr.rgb_color[0]}, ${attr.rgb_color[1]}, ${attr.rgb_color[2]})`;
-    }
-
-    if (Array.isArray(attr.hs_color) && attr.hs_color.length >= 2) {
-      const [r, g, b] = hsToRgb(attr.hs_color[0], attr.hs_color[1]);
-      return `rgb(${r}, ${g}, ${b})`;
-    }
-
-    if (Array.isArray(attr.rgbw_color) && attr.rgbw_color.length >= 3) {
-      return `rgb(${attr.rgbw_color[0]}, ${attr.rgbw_color[1]}, ${attr.rgbw_color[2]})`;
-    }
-
-    if (Array.isArray(attr.rgbww_color) && attr.rgbww_color.length >= 3) {
-      return `rgb(${attr.rgbww_color[0]}, ${attr.rgbww_color[1]}, ${attr.rgbww_color[2]})`;
-    }
-
-    // 3. Fallback color temp if defined and no RGB was present
-    if (attr.color_temp_kelvin !== undefined || attr.color_temp !== undefined) {
-      const kelvin = attr.color_temp_kelvin ?? Math.round(1000000 / attr.color_temp);
-      const [r, g, b] = kelvinToRgb(kelvin);
-      return `rgb(${r}, ${g}, ${b})`;
-    }
-
-    // 4. Default warm light glow when turned on
+    // 3. Default clean warm light active color for white / color_temp / onoff lights
     if (stateObj.state === 'on') {
-      return 'var(--state-light-active-color, rgb(255, 205, 120))';
+      return 'var(--state-light-active-color, var(--state-light-color, rgb(255, 205, 120)))';
     }
 
     return null;
