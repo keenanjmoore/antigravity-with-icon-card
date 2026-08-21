@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "116";
+export const CARD_VERSION = "117";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -1873,20 +1873,29 @@ export class AntigravityWithIconCard extends LitElement {
       if (liveLightColor) {
         defaultActiveColor = liveLightColor;
       }
+    } else if (domain === 'binary_sensor' || domain === 'lock' || domain === 'switch') {
+      defaultActiveColor = '#d60000';
     }
 
     // color_type: 'card' floods the whole card background with current light color or color_temp
     const colorTypeIsCard = this.config.color_type === 'card';
     let activeColor = this._resolveColor(this.config.active_color);
     if (!activeColor || this.config.use_light_color) {
-      if (domain === 'light' && liveLightColor && (this.config.use_light_color || !this.config.active_color)) {
+      if (domain === 'light' && liveLightColor) {
         activeColor = liveLightColor;
       } else {
         activeColor = defaultActiveColor;
       }
     }
 
-    const inactiveColor = this._resolveColor(this.config.inactive_color) || 'var(--secondary-background-color, rgba(150, 150, 150, 0.2))';
+    let defaultInactiveColor = 'var(--secondary-background-color, rgba(150, 150, 150, 0.2))';
+    if (domain === 'light') {
+      defaultInactiveColor = '#000000';
+    } else if (domain === 'binary_sensor' || domain === 'lock' || domain === 'switch') {
+      defaultInactiveColor = '#03b500';
+    }
+
+    const inactiveColor = this._resolveColor(this.config.inactive_color) || defaultInactiveColor;
     const iconBg = colorTypeIsCard ? 'transparent' : (isActive ? activeColor : inactiveColor);
     const iconColorStyle = this.config.icon_color 
       ? `color: ${this._resolveColor(this.config.icon_color)};` 
@@ -1965,9 +1974,15 @@ export class AntigravityWithIconCard extends LitElement {
     if (multiStageFade.activeFade && (fadeTarget === 'card' || fadeTarget === 'all' || colorTypeIsCard)) {
       rawBgStyle = multiStageFade.currentColor;
     } else if (colorTypeIsCard) {
-      rawBgStyle = isActive ? ((domain === 'light' && liveLightColor) ? liveLightColor : activeColor) : inactiveColor;
+      if (domain === 'light') {
+        rawBgStyle = isActive ? (liveLightColor || activeColor) : (this.config.inactive_color ? inactiveColor : '#000000');
+      } else {
+        rawBgStyle = isActive ? activeColor : inactiveColor;
+      }
     } else if (resolvedBg) {
       rawBgStyle = resolvedBg;
+    } else if (domain === 'light' && !isActive) {
+      rawBgStyle = '#000000';
     } else {
       rawBgStyle = `rgba(150, 150, 150, ${bgOpacity})`;
     }
