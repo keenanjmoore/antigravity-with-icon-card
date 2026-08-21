@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "112";
+export const CARD_VERSION = "113";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -36,29 +36,24 @@ window.customCards.push({
   description: "A custom card merging Bubble Card styling with Mushroom Card controls, full icon customizations, and multi-stage fade transitions."
 });
 if (!customElements.get('antigravity-with-icon-card')) {
-  // Registered via @customElement
+  customElements.define('antigravity-with-icon-card', AntigravityCardWithIcon);
 }
 
-// ---- Active States (Domain-Aware) ----
+// ---- Constants & State Sets (Module-Level to avoid GC thrashing) ----
 const ACTIVE_STATES = new Set([
-  'on', 'home', 'playing', 'paused', 'buffering',
-  'open', 'opening', 'closing',
-  'unlocked', 'locking', 'unlocking',
-  'heat', 'cool', 'heat_cool', 'auto', 'fan_only', 'dry',
-  'armed_home', 'armed_away', 'armed_night', 'armed_vacation', 'armed_custom_bypass',
-  'triggered', 'pending', 'arming',
-  'cleaning', 'returning',
-  'above_horizon',
-  'active', 'electric', 'gas', 'heat_pump'
+  'on', 'open', 'opening', 'active', 'cleaning', 'play', 'playing', 'cool',
+  'heat', 'fan_only', 'auto', 'dry', 'home', 'occupied', 'motion', 'detected',
+  'running', 'idle', 'true', '1'
 ]);
 
-// ---- HA Named Colors (Module-Level Constant for Performance) ----
 const HA_NAMED_COLORS = new Set([
   'primary', 'accent', 'red', 'pink', 'purple', 'deep-purple', 'indigo',
   'blue', 'light-blue', 'cyan', 'teal', 'green', 'light-green', 'lime',
   'yellow', 'amber', 'orange', 'deep-orange', 'brown', 'grey', 'blue-grey',
   'black', 'white', 'disabled'
 ]);
+
+const COLOR_MODES_SET = new Set(['hs', 'xy', 'rgb', 'rgbw', 'rgbww']);
 
 // ---- Regex Constants (Module-Level for Performance) ----
 const RGB_TRIPLET_REGEX = /^\d+\s*,\s*\d+\s*,\s*\d+$/;
@@ -402,9 +397,18 @@ export class AntigravityWithIconCard extends LitElement {
   private _iconOffsetStyle = '';
   private _featuresOffsetStyle = '';
   private _mainSliderMarginOffsets = '';
+  private _colorTempMarginOffsets = '';
+  private _colorHueMarginOffsets = '';
   private _textBoxWidth = '';
   private _primaryTextStyle = '';
   private _secondaryTextStyle = '';
+  private _iconShapeClass = '';
+  private _iconAnimClass = '';
+  private _iconContainerSize = 36;
+  private _iconSize = 24;
+  private _iconOpacityStyle = '';
+  private _iconRotateStyle = '';
+  private _fadeStaticConfig: any = null;
 
   private _computeStaticStylesAndClasses() {
     if (!this.config) return;
@@ -435,70 +439,67 @@ export class AntigravityWithIconCard extends LitElement {
     const isGoogleSlider = this.config.slider_style === 'google';
     const isFullSlider = this.config.slider_style === 'full';
     const defaultSliderHeight = isGoogleSlider ? 42 : isFullSlider ? 40 : 12;
-    const defaultSliderRadius = isGoogleSlider ? 21 : isFullSlider ? 15 : 6;
+    const sliderHeight = this.config.slider_height !== undefined ? this.config.slider_height : defaultSliderHeight;
+    const defaultSliderRadius = isGoogleSlider ? 21 : isFullSlider ? 0 : (sliderHeight / 2);
+    const sliderRadius = this.config.slider_border_radius !== undefined ? this.config.slider_border_radius : defaultSliderRadius;
 
-    let cardSizeStyle = '';
-    if (this.config.card_width) cardSizeStyle += `width: ${this.config.card_width}; `;
-    if (this.config.card_max_width) cardSizeStyle += `max-width: ${this.config.card_max_width}; `;
-    if (this.config.card_height) cardSizeStyle += `height: ${this.config.card_height}; `;
-    if (this.config.card_min_height !== undefined && this.config.card_min_height > 0) cardSizeStyle += `min-height: ${this.config.card_min_height}px; `;
+    const borderWidth = this.config.card_border_width ?? (this.config.card_border_color ? 1 : 0);
+    const borderStyle = this.config.card_border_style ?? 'solid';
+    const borderProp = borderWidth > 0 ? `border: ${borderWidth}px ${borderStyle} ${this._resolveColor(this.config.card_border_color) || 'var(--divider-color, rgba(150, 150, 150, 0.2))'};` : '';
 
-    let borderStyle = '';
-    if (this.config.card_border_width && this.config.card_border_width > 0 && this.config.card_border_style && this.config.card_border_style !== 'none') {
-      borderStyle = `border: ${this.config.card_border_width}px ${this.config.card_border_style} ${this._resolveColor(this.config.card_border_color) || 'var(--divider-color)'};`;
-    }
-
-    const blurStyle = this.config.backdrop_blur ? `backdrop-filter: blur(${this.config.backdrop_blur}px); -webkit-backdrop-filter: blur(${this.config.backdrop_blur}px);` : '';
-    const fillStyle = this.config.fill_container ? 'height: 100%;' : '';
+    const widthStyle = this.config.card_width ? `width: ${this.config.card_width};` : '';
+    const maxWidthStyle = this.config.card_max_width ? `max-width: ${this.config.card_max_width};` : '';
+    const heightStyle = this.config.card_height ? `height: ${this.config.card_height};` : '';
+    const minHeightStyle = this.config.card_min_height !== undefined ? `min-height: ${this.config.card_min_height}px;` : '';
+    const fillStyle = this.config.fill_container === true ? 'height: 100%; width: 100%;' : '';
     const overflowStyle = this.config.overflow_hidden !== false ? 'overflow: hidden;' : 'overflow: visible;';
-    const aspectRatioStyle = this.config.aspect_ratio ? `aspect-ratio: ${this.config.aspect_ratio};` : '';
-    const cardOpacityStyle = (this.config.card_opacity !== undefined && this.config.card_opacity < 100) ? `opacity: ${this.config.card_opacity / 100};` : '';
-    const dur = this.config.transition_duration ?? 300;
-    const transitionStyle = dur > 0 ? `transition: background ${dur}ms ease-out, box-shadow ${dur}ms ease-out, border-color ${dur}ms ease-out, opacity ${dur}ms ease-out;` : 'transition: none;';
-
-    const subBtnAlign = `--ag-sub-btn-align: ${this.config.sub_button_alignment ?? 'flex-end'};`;
-    const fullSliderOpacity = `--ag-full-slider-opacity: ${(this.config.full_slider_opacity ?? 30) / 100};`;
-    const scrollSpeed = this.config.text_scrolling_speed ?? 10;
-    const scrollSpeedVar = `--ag-marquee-speed: ${scrollSpeed}s;`;
+    const blurStyle = this.config.backdrop_blur !== undefined ? `backdrop-filter: blur(${this.config.backdrop_blur}px); -webkit-backdrop-filter: blur(${this.config.backdrop_blur}px);` : '';
+    const cardOpacityStyle = this.config.card_opacity !== undefined ? `opacity: ${this.config.card_opacity / 100};` : '';
+    const transitionStyle = this.config.transition_duration !== undefined ? `transition: all ${this.config.transition_duration}ms ease;` : '';
 
     const iconPaddingVar = this.config.icon_padding !== undefined ? `--ag-icon-padding: ${this.config.icon_padding}px;` : '';
-    const textPaddingV = this.config.text_padding_vertical ?? this.config.text_padding ?? 0;
-    const textPaddingH = this.config.text_padding_horizontal ?? this.config.text_padding ?? 0;
-    const textPaddingVar = (this.config.text_padding !== undefined || this.config.text_padding_vertical !== undefined || this.config.text_padding_horizontal !== undefined) ? `--ag-text-padding: ${textPaddingV}px ${textPaddingH}px;` : '';
-    const featPaddingV = this.config.features_padding_vertical ?? this.config.features_padding ?? 0;
-    const featPaddingH = this.config.features_padding_horizontal ?? this.config.features_padding ?? 0;
-    const featPaddingVar = (this.config.features_padding !== undefined || this.config.features_padding_vertical !== undefined || this.config.features_padding_horizontal !== undefined) ? `--ag-features-padding: ${featPaddingV}px ${featPaddingH}px;` : '';
-    const subBtnContainerPaddingVar = this.config.sub_button_container_padding !== undefined ? `--ag-sub-btn-container-padding: ${this.config.sub_button_container_padding}px;` : '';
+    const textPaddingVert = this.config.text_padding_vertical ?? this.config.text_padding ?? 0;
+    const textPaddingHoriz = this.config.text_padding_horizontal ?? this.config.text_padding ?? 0;
+    const featuresPaddingVert = this.config.features_padding_vertical ?? this.config.features_padding ?? 0;
+    const featuresPaddingHoriz = this.config.features_padding_horizontal ?? this.config.features_padding ?? 0;
+    const subBtnPadding = this.config.sub_button_padding ?? 0;
+    const subBtnContainerPadding = this.config.sub_button_container_padding ?? 0;
+
+    const subBtnAlign = this.config.sub_button_alignment ? `--ag-sub-button-alignment: ${this.config.sub_button_alignment};` : '';
+    const scrollSpeedVar = this.config.text_scrolling_speed ? `--ag-scroll-speed: ${this.config.text_scrolling_speed}s;` : '';
+    const fullSliderOpacity = this.config.full_slider_opacity !== undefined ? `--ag-full-slider-opacity: ${this.config.full_slider_opacity / 100};` : '';
 
     this._staticCardStyles = [
-      cardSizeStyle,
+      cardMarginStyle,
       `border-radius: ${borderRadius}px;`,
-      `padding: ${pTop}px ${pRight}px ${pBottom}px ${pLeft}px;`,
-      borderStyle,
-      blurStyle,
+      borderProp,
+      widthStyle,
+      maxWidthStyle,
+      heightStyle,
+      minHeightStyle,
       fillStyle,
       overflowStyle,
-      aspectRatioStyle,
+      blurStyle,
       cardOpacityStyle,
       transitionStyle,
-      cardMarginStyle,
       iconPaddingVar,
-      textPaddingVar,
-      featPaddingVar,
-      subBtnContainerPaddingVar,
-      `--ag-slider-height: ${this.config.slider_height ?? defaultSliderHeight}px;`,
-      `--ag-slider-radius: ${this.config.slider_border_radius ?? defaultSliderRadius}px;`,
+      `--ag-card-padding: ${pTop}px ${pRight}px ${pBottom}px ${pLeft}px;`,
+      `--ag-text-padding: ${textPaddingVert}px ${textPaddingHoriz}px;`,
+      `--ag-features-padding: ${featuresPaddingVert}px ${featuresPaddingHoriz}px;`,
+      `--ag-sub-button-padding: ${subBtnPadding}px;`,
+      `--ag-sub-button-container-padding: ${subBtnContainerPadding}px;`,
       `--ag-content-spacing: ${this.config.content_spacing ?? 12}px;`,
-      `--ag-text-spacing: ${this.config.text_spacing ?? 0}px;`,
+      `--ag-text-spacing: ${this.config.text_spacing ?? 2}px;`,
       `--ag-features-margin: ${this.config.features_margin ?? 4}px;`,
-      `--ag-slider-spacing: ${this.config.slider_spacing ?? 4}px;`,
+      `--ag-slider-spacing: ${this.config.slider_spacing ?? 6}px;`,
       `--ag-icon-margin: ${this.config.icon_margin ?? 0}px;`,
-      `--ag-sub-button-spacing: ${this.config.sub_button_spacing ?? 8}px;`,
-      `--ag-sub-button-padding: ${this.config.sub_button_padding ?? 6}px;`,
+      `--ag-sub-button-spacing: ${this.config.sub_button_spacing ?? 6}px;`,
+      `--ag-slider-height: ${sliderHeight}px;`,
+      `--ag-slider-radius: ${sliderRadius}px;`,
       `--ag-badge-size: ${this.config.badge_size ?? 16}px;`,
       `--ag-badge-offset: ${this.config.badge_offset ?? -2}px;`,
-      `--ag-content-alignment: ${this.config.content_alignment ?? 'flex-start'};`,
       `--ag-text-alignment: ${this.config.text_alignment ?? 'left'};`,
+      `--ag-content-alignment: ${this.config.content_alignment ?? 'flex-start'};`,
       subBtnAlign,
       scrollSpeedVar,
       fullSliderOpacity
@@ -532,6 +533,20 @@ export class AntigravityWithIconCard extends LitElement {
       mainEndOffset ? `margin-right: ${mainEndOffset}px !important;` : ''
     ].filter(Boolean).join(' ');
 
+    const ctStartOffset = Number(this.config.color_temp_start_offset) || 0;
+    const ctEndOffset = Number(this.config.color_temp_end_offset) || 0;
+    this._colorTempMarginOffsets = [
+      ctStartOffset ? `margin-left: ${ctStartOffset}px !important;` : '',
+      ctEndOffset ? `margin-right: ${ctEndOffset}px !important;` : ''
+    ].filter(Boolean).join(' ');
+
+    const csStartOffset = Number(this.config.color_slider_start_offset) || 0;
+    const csEndOffset = Number(this.config.color_slider_end_offset) || 0;
+    this._colorHueMarginOffsets = [
+      csStartOffset ? `margin-left: ${csStartOffset}px !important;` : '',
+      csEndOffset ? `margin-right: ${csEndOffset}px !important;` : ''
+    ].filter(Boolean).join(' ');
+
     this._textBoxWidth = this.config.text_box_width ? `max-width: ${this.config.text_box_width}; width: ${this.config.text_box_width};` : 'width: 100%; max-width: 100%;';
 
     const txtTransformPrimary = this.config.text_transform_primary && this.config.text_transform_primary !== 'none' ? `text-transform: ${this.config.text_transform_primary};` : '';
@@ -542,6 +557,78 @@ export class AntigravityWithIconCard extends LitElement {
 
     this._primaryTextStyle = `font-size: ${this.config.font_size_primary ?? 14}px; font-weight: ${primaryWeight}; ${txtTransformPrimary} ${letterSpacingStyle} ${lineHeightStyle}`;
     this._secondaryTextStyle = `font-size: ${this.config.font_size_secondary ?? 12}px; ${txtTransformSecondary} ${letterSpacingStyle} ${lineHeightStyle}`;
+
+    this._iconShapeClass = `icon-shape-${this.config.icon_shape || 'circle'}`;
+    this._iconAnimClass = `anim-${this.config.icon_animation || 'none'}`;
+    this._iconContainerSize = this.config.icon_container_size ?? (this.config.card_layout === 'large' ? 48 : 36);
+    this._iconSize = this.config.icon_size ?? 24;
+    this._iconOpacityStyle = (this.config.icon_opacity !== undefined && this.config.icon_opacity < 100) ? `opacity: ${this.config.icon_opacity / 100};` : '';
+    this._iconRotateStyle = (this.config.icon_rotate && this.config.icon_rotate !== 0) ? `transform: rotate(${this.config.icon_rotate}deg);` : '';
+
+    // Pre-calculate sub-buttons array once
+    const entityId = this.config.entity;
+    const buttons: any[] = [];
+    for (let i = 1; i <= 4; i++) {
+      const e = (this.config as any)[`sub_button_${i}_entity`];
+      const icon = (this.config as any)[`sub_button_${i}_icon`];
+      const name = (this.config as any)[`sub_button_${i}_name`];
+      const tap = (this.config as any)[`sub_button_${i}_tap_action`];
+      const hold = (this.config as any)[`sub_button_${i}_hold_action`];
+      const dbl = (this.config as any)[`sub_button_${i}_double_tap_action`];
+      const type = (this.config as any)[`sub_button_${i}_type`];
+      const color = (this.config as any)[`sub_button_${i}_color`];
+      const bg = (this.config as any)[`sub_button_${i}_show_background`];
+      const showState = (this.config as any)[`sub_button_${i}_show_state`];
+      
+      const isConfigured = !!(e || icon || name || (type && type !== 'button') || showState);
+      if (isConfigured) {
+        const resolvedEntity = e || entityId;
+        buttons.push(Object.freeze({
+          key: `${resolvedEntity || 'sub'}_${i}`,
+          entity: resolvedEntity,
+          type: type || 'button',
+          icon,
+          color,
+          bg,
+          name,
+          showState: showState === true,
+          tapAction: tap,
+          holdAction: hold,
+          doubleTapAction: dbl
+        }));
+      }
+    }
+    this._cachedSubButtons = Object.freeze(buttons) as any[];
+
+    // Pre-calculate Multi-Stage Fade static settings
+    if (this.config.fade_transition_enabled) {
+      const d1 = Number(this.config.fade_stage_1_duration) || 60;
+      const d2 = Number(this.config.fade_stage_2_duration) || 600;
+      const d3 = Number(this.config.fade_stage_3_duration) || 1800;
+      const c1Rgb = parseColorToRgb(this.config.fade_stage_1_color) || [255, 152, 0];
+      const c2Rgb = parseColorToRgb(this.config.fade_stage_2_color) || [205, 220, 57];
+      const c3Rgb = parseColorToRgb(this.config.fade_stage_3_color);
+      this._fadeStaticConfig = {
+        d1,
+        d2,
+        d3,
+        totalDuration: d1 + d2 + d3,
+        c1Rgb,
+        c2Rgb,
+        c3Rgb,
+        restingResult: Object.freeze({
+          enabled: true,
+          activeFade: false,
+          currentColor: c3Rgb ? formatRgb(c3Rgb) : '',
+          progressPct: 100,
+          remainingSeconds: 0,
+          currentStage: 0,
+          stageLabel: 'Resting'
+        })
+      };
+    } else {
+      this._fadeStaticConfig = null;
+    }
   }
 
   // --- PERFORMANCE: Zero-allocation re-render check ---
@@ -573,41 +660,7 @@ export class AntigravityWithIconCard extends LitElement {
   private _cachedHasCollapsible = false;
 
   private _getSubButtons(): any[] {
-    if (this._cachedSubButtons) return this._cachedSubButtons;
-    const entityId = this.config.entity;
-    const buttons: any[] = [];
-    for (let i = 1; i <= 4; i++) {
-      const e = (this.config as any)[`sub_button_${i}_entity`];
-      const icon = (this.config as any)[`sub_button_${i}_icon`];
-      const name = (this.config as any)[`sub_button_${i}_name`];
-      const tap = (this.config as any)[`sub_button_${i}_tap_action`];
-      const hold = (this.config as any)[`sub_button_${i}_hold_action`];
-      const dbl = (this.config as any)[`sub_button_${i}_double_tap_action`];
-      const type = (this.config as any)[`sub_button_${i}_type`];
-      const color = (this.config as any)[`sub_button_${i}_color`];
-      const bg = (this.config as any)[`sub_button_${i}_show_background`];
-      const showState = (this.config as any)[`sub_button_${i}_show_state`];
-      
-      const isConfigured = !!(e || icon || name || (type && type !== 'button') || showState);
-      if (isConfigured) {
-        const resolvedEntity = e || entityId;
-        buttons.push({
-          key: `${resolvedEntity || 'sub'}_${i}`,
-          entity: resolvedEntity,
-          type: type || 'button',
-          icon,
-          color,
-          bg,
-          name,
-          showState: showState === true,
-          tapAction: tap,
-          holdAction: hold,
-          doubleTapAction: dbl
-        });
-      }
-    }
-    this._cachedSubButtons = buttons;
-    return this._cachedSubButtons;
+    return this._cachedSubButtons || [];
   }
 
   private _hasCollapsible(): boolean {
@@ -826,9 +879,14 @@ export class AntigravityWithIconCard extends LitElement {
     const startRgb = parseColorToRgb(startColorStr) || [214, 0, 0];
     const finalRgb = parseColorToRgb(finalColorStr) || [3, 177, 0];
 
-    const d1 = Number(this.config.fade_stage_1_duration) ?? 60;   // default 60s
-    const d2 = Number(this.config.fade_stage_2_duration) ?? 600;  // default 10min (600s)
-    const d3 = Number(this.config.fade_stage_3_duration) ?? 1800; // default 30min (1800s)
+    const cfg = this._fadeStaticConfig;
+    const d1 = cfg?.d1 ?? (Number(this.config.fade_stage_1_duration) || 60);
+    const d2 = cfg?.d2 ?? (Number(this.config.fade_stage_2_duration) || 600);
+    const d3 = cfg?.d3 ?? (Number(this.config.fade_stage_3_duration) || 1800);
+    const totalDuration = cfg?.totalDuration ?? (d1 + d2 + d3);
+    if (totalDuration <= 0) {
+      return DISABLED_FADE_RESULT;
+    }
 
     // Check if state changed to capture live color continuity
     if (this._lastTrackedState !== null && this._lastTrackedState !== stateObj.state) {
@@ -844,18 +902,13 @@ export class AntigravityWithIconCard extends LitElement {
       : startRgb;
 
     // Stage targets & continuous pickups
-    const c1Rgb = parseColorToRgb(this.config.fade_stage_1_color) || [255, 152, 0]; // Amber
+    const c1Rgb = cfg?.c1Rgb ?? (parseColorToRgb(this.config.fade_stage_1_color) || [255, 152, 0]);
     const stage2StartRgb = (this.config.fade_stage_2_pickup !== false) ? c1Rgb : startRgb;
 
-    const c2Rgb = parseColorToRgb(this.config.fade_stage_2_color) || [205, 220, 57]; // Lime
+    const c2Rgb = cfg?.c2Rgb ?? (parseColorToRgb(this.config.fade_stage_2_color) || [205, 220, 57]);
     const stage3StartRgb = (this.config.fade_stage_3_pickup !== false) ? c2Rgb : c1Rgb;
 
-    const c3Rgb = parseColorToRgb(this.config.fade_stage_3_color) || finalRgb;
-
-    const totalDuration = d1 + d2 + d3;
-    if (totalDuration <= 0) {
-      return DISABLED_FADE_RESULT;
-    }
+    const c3Rgb = cfg?.c3Rgb ?? (parseColorToRgb(this.config.fade_stage_3_color) || finalRgb);
 
     const lastChangedDate = this._parseDate(stateObj.last_changed || stateObj.last_updated);
     if (!lastChangedDate) {
@@ -867,6 +920,9 @@ export class AntigravityWithIconCard extends LitElement {
     if (elapsed >= totalDuration) {
       this._currentLiveRgb = c3Rgb;
       this._previousLiveRgb = null;
+      if (cfg?.restingResult) {
+        return cfg.restingResult;
+      }
       return {
         enabled: true,
         activeFade: false,
@@ -1730,14 +1786,12 @@ export class AntigravityWithIconCard extends LitElement {
   private _handleColorInput(e: Event, throttle: boolean, entityOverride?: string, throttleKey?: string) {
     e.stopPropagation();
     const hex = (e.target as HTMLInputElement).value;
-    if (!hex || hex.length < 7) return;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    if (isNaN(r) || isNaN(g) || isNaN(b)) return;
+    if (!hex) return;
+    const rgb = parseColorToRgb(hex);
+    if (!rgb) return;
     const entity = entityOverride || this.config.entity;
     const callService = () => {
-      this.hass.callService('light', 'turn_on', { entity_id: entity, rgb_color: [r, g, b] });
+      this.hass.callService('light', 'turn_on', { entity_id: entity, rgb_color: rgb });
     };
     if (throttle) {
       this._throttledCall(throttleKey || 'color_picker', callService);
@@ -1787,8 +1841,8 @@ export class AntigravityWithIconCard extends LitElement {
     // Icon & Shape formatting
     const iconType = this.config.icon_type ?? 'icon';
     const showIconArea = this.config.show_icon !== false && iconType !== 'none';
-    const iconShapeClass = `shape-${this.config.icon_shape ?? 'circle'}`;
-    const iconAnimClass = this.config.icon_animation && this.config.icon_animation !== 'none' ? `anim-${this.config.icon_animation}` : '';
+    const iconShapeClass = this._iconShapeClass;
+    const iconAnimClass = this._iconAnimClass;
 
     // Smart Domain-Aware Default Active Color
     let defaultActiveColor = 'var(--primary-color)';
@@ -1821,8 +1875,8 @@ export class AntigravityWithIconCard extends LitElement {
     const iconColorStyle = this.config.icon_color 
       ? `color: ${this._resolveColor(this.config.icon_color)};` 
       : (colorTypeIsCard && isActive ? `color: #ffffff; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));` : '');
-    const iconOpacityStyle = (this.config.icon_opacity !== undefined && this.config.icon_opacity < 100) ? `opacity: ${this.config.icon_opacity / 100};` : '';
-    const iconRotateStyle = (this.config.icon_rotate && this.config.icon_rotate !== 0) ? `transform: rotate(${this.config.icon_rotate}deg);` : '';
+    const iconOpacityStyle = this._iconOpacityStyle;
+    const iconRotateStyle = this._iconRotateStyle;
 
     // Multi-Domain Interactive Sliders
     const hasControls = this.config.show_slider !== false;
@@ -1840,14 +1894,24 @@ export class AntigravityWithIconCard extends LitElement {
     const hideColorPickerWhenOff = this.config.hide_color_picker_when_off !== false;
     const hideColorSliderWhenOff = this.config.hide_color_slider_when_off !== false;
 
-    const supportsBrightness = stateObj.attributes?.brightness !== undefined || stateObj.attributes?.supported_color_modes?.some((m: string) => m !== 'onoff');
+    const supportedModes = stateObj.attributes?.supported_color_modes;
+    let supportsBrightness = stateObj.attributes?.brightness !== undefined;
+    let supportsColorTemp = false;
+    let supportsColor = false;
+    if (Array.isArray(supportedModes)) {
+      for (let i = 0; i < supportedModes.length; i++) {
+        const m = supportedModes[i];
+        if (m !== 'onoff') supportsBrightness = true;
+        if (m === 'color_temp') supportsColorTemp = true;
+        if (COLOR_MODES_SET.has(m)) supportsColor = true;
+      }
+    }
+
     const showLightSlider = isLight && hasControls && supportsBrightness && (!hideSliderWhenOff || isActive);
     const colorTempAttr = stateObj.attributes?.color_temp_kelvin ?? stateObj.attributes?.color_temp;
-    const showColorTemp = isLight && this.config.show_color_temp === true && (colorTempAttr !== undefined || stateObj.attributes?.supported_color_modes?.some((m: string) => ['color_temp'].includes(m))) && (!hideColorTempWhenOff || isActive);
+    const showColorTemp = isLight && this.config.show_color_temp === true && (colorTempAttr !== undefined || supportsColorTemp) && (!hideColorTempWhenOff || isActive);
     
     // RGB / Hue / XY Color Mode Support
-    const supportedModes = stateObj.attributes?.supported_color_modes;
-    const supportsColor = Array.isArray(supportedModes) && supportedModes.some((m: string) => ['hs', 'xy', 'rgb', 'rgbw', 'rgbww'].includes(m));
     const isSliderColorPicker = this.config.color_picker_type !== 'wheel';
     const showColorSlider = isLight && (this.config.show_color_slider === true || (this.config.show_color_picker === true && isSliderColorPicker)) && supportsColor && (!hideColorSliderWhenOff || isActive);
     const showColorWheel = isLight && this.config.show_color_picker === true && !isSliderColorPicker && supportsColor && (!hideColorPickerWhenOff || isActive);
@@ -1937,9 +2001,8 @@ export class AntigravityWithIconCard extends LitElement {
     }
 
     const isInline = this.config.features_position === 'inline';
-    const iconSize = this.config.icon_size ?? 24;
-    const isNoneShape = this.config.icon_shape === 'none';
-    const containerSize = this.config.icon_container_size ?? (isNoneShape ? iconSize : (this.config.icon_size ? this.config.icon_size + 16 : 40));
+    const iconSize = this._iconSize;
+    const containerSize = this._iconContainerSize;
 
     const scrollPrimary = this.config.text_scrolling_primary || 'none';
     const scrollSecondary = this.config.text_scrolling_secondary || 'none';
@@ -2096,27 +2159,17 @@ export class AntigravityWithIconCard extends LitElement {
     const isFullStyle = this.config.slider_style === 'full';
     const fullClass = (isMainSlider && isFullStyle) ? 'main-slider-full' : '';
 
-    let startOffset = 0;
-    let endOffset = 0;
-    if (key === 'color_temp') {
-      startOffset = Number(this.config.color_temp_start_offset) || 0;
-      endOffset = Number(this.config.color_temp_end_offset) || 0;
-    } else if (key === 'color_hue') {
-      startOffset = Number(this.config.color_slider_start_offset) || 0;
-      endOffset = Number(this.config.color_slider_end_offset) || 0;
-    } else {
-      startOffset = Number(this.config.slider_start_offset) || 0;
-      endOffset = Number(this.config.slider_end_offset) || 0;
-    }
-
     let marginOffsets = '';
     if (isMainSlider && isFullStyle) {
+      const startOffset = Number(this.config.slider_start_offset) || 0;
+      const endOffset = Number(this.config.slider_end_offset) || 0;
       marginOffsets = `left: ${startOffset}px !important; right: ${endOffset}px !important; width: calc(100% - ${(startOffset + endOffset)}px) !important;`;
+    } else if (key === 'color_temp') {
+      marginOffsets = this._colorTempMarginOffsets;
+    } else if (key === 'color_hue') {
+      marginOffsets = this._colorHueMarginOffsets;
     } else {
-      marginOffsets = [
-        startOffset ? `margin-left: ${startOffset}px !important;` : '',
-        endOffset ? `margin-right: ${endOffset}px !important;` : ''
-      ].filter(Boolean).join(' ');
+      marginOffsets = this._mainSliderMarginOffsets;
     }
 
     return html`
@@ -2846,6 +2899,7 @@ export class AntigravityWithIconCard extends LitElement {
         cursor: pointer;
         box-sizing: border-box;
         overflow: hidden;
+        contain: layout style;
         -webkit-tap-highlight-color: transparent;
         -webkit-touch-callout: none;
         user-select: none;
