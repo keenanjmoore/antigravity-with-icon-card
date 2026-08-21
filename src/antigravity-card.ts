@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "126";
+export const CARD_VERSION = "127";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -821,7 +821,19 @@ export class AntigravityWithIconCard extends LitElement {
       s === 'last-triggered'
     );
     if (needsTimer && !this._relativeTimer) {
-      const intervalMs = isFading ? 1000 : 5000;
+      let intervalMs = isFading ? 1000 : 5000;
+      const ts = stateObj?.attributes?.last_triggered || stateObj?.last_changed || stateObj?.last_updated;
+      if (ts && !isFading && !isStateDynamic) {
+        const d = this._parseDate(ts);
+        if (d) {
+          const ageSec = Math.max(0, ((Date.now() - d.getTime()) / 1000) | 0);
+          if (ageSec > 3600) {
+            intervalMs = 60000; // Over 1 hour old: tick once per minute
+          } else if (ageSec > 60) {
+            intervalMs = 15000; // Over 1 min old: tick every 15s
+          }
+        }
+      }
       this._relativeTimer = setInterval(() => {
         if (!this.hasAttribute('offscreen') && this.style.display !== 'none') {
           // If fade completed, teardown timer to save battery
@@ -872,7 +884,6 @@ export class AntigravityWithIconCard extends LitElement {
       clearTimeout(this._subHoldTimer);
       this._subHoldTimer = null;
     }
-    this._sliderStateMap.clear();
   }
 
   protected firstUpdated(changedProperties: PropertyValues) {
@@ -1200,22 +1211,29 @@ export class AntigravityWithIconCard extends LitElement {
     if (!stateObj) return "";
     const normType = (type || '').toLowerCase().replace(/_/g, '-');
     switch (normType) {
-      case 'name':
-        return this.config.name || stateObj.attributes.friendly_name || this.config.entity || "";
+      case 'name': {
+        const rawName = this.config.name || stateObj.attributes.friendly_name || this.config.entity || "";
+        return rawName;
+      }
       case 'state': {
         const domain = (stateObj.entity_id || '').split('.')[0];
 
-        // 1. Timer active countdown
-        if (domain === 'timer' && stateObj.state === 'active' && stateObj.attributes?.finishes_at) {
-          const finishesAt = Date.parse(stateObj.attributes.finishes_at);
-          if (!isNaN(finishesAt)) {
-            const remSec = Math.max(0, Math.round((finishesAt - Date.now()) / 1000));
-            const m = Math.floor(remSec / 60);
-            const s = remSec % 60;
-            const h = Math.floor(m / 60);
-            const dispM = (m % 60).toString().padStart(2, '0');
-            const dispS = s.toString().padStart(2, '0');
-            return h > 0 ? `${h}:${dispM}:${dispS}` : `${dispM}:${dispS}`;
+        // 1. Timer active / paused
+        if (domain === 'timer') {
+          if (stateObj.state === 'paused') {
+            return `${stateObj.attributes?.remaining || 'Paused'} (Paused)`;
+          }
+          if (stateObj.state === 'active' && stateObj.attributes?.finishes_at) {
+            const finishesAt = Date.parse(stateObj.attributes.finishes_at);
+            if (!isNaN(finishesAt)) {
+              const remSec = Math.max(0, Math.round((finishesAt - Date.now()) / 1000));
+              const m = Math.floor(remSec / 60);
+              const s = remSec % 60;
+              const h = Math.floor(m / 60);
+              const dispM = (m % 60).toString().padStart(2, '0');
+              const dispS = s.toString().padStart(2, '0');
+              return h > 0 ? `${h}:${dispM}:${dispS}` : `${dispM}:${dispS}`;
+            }
           }
         }
 
@@ -1224,7 +1242,33 @@ export class AntigravityWithIconCard extends LitElement {
           return this._formatForDuration(stateObj.last_changed);
         }
 
-        // 5. Lock Domain Status
+        // 3. Vacuum Domain Status
+        if (domain === 'vacuum') {
+          const vState = stateObj.state;
+          const label = vState === 'cleaning' ? 'Cleaning' : (vState === 'docked' ? 'Docked' : (vState === 'returning' ? 'Returning' : vState));
+          const bat = stateObj.attributes?.battery_level;
+          return bat !== undefined ? `${label} • 🔋${bat}%` : label;
+        }
+
+        // 4. Weather Domain Status
+        if (domain === 'weather') {
+          const temp = stateObj.attributes?.temperature;
+          const uom = this.hass.config?.unit_system?.temperature || '°F';
+          const cond = (stateObj.state || '').replace(/-/g, ' ');
+          return temp !== undefined ? `${temp}${uom} • ${cond}` : cond;
+        }
+
+        // 5. Alarm Control Panel Status
+        if (domain === 'alarm_control_panel') {
+          const aState = stateObj.state;
+          if (aState === 'armed_home') return '🛡️ Armed Home';
+          if (aState === 'armed_away') return '🛡️ Armed Away';
+          if (aState === 'disarmed') return 'Disarmed';
+          if (aState === 'triggered') return '⚠️ TRIGGERED';
+          if (aState === 'pending') return '⏳ Arming Pending';
+        }
+
+        // 6. Lock Domain Status
         if (domain === 'lock') {
           if (stateObj.state === 'locked') return 'Locked';
           if (stateObj.state === 'unlocked') return 'Unlocked';
@@ -1233,7 +1277,7 @@ export class AntigravityWithIconCard extends LitElement {
           if (stateObj.state === 'unlocking') return 'Unlocking...';
         }
 
-        // 6. Light Domain Status with Color Temp / Mode
+        // 7. Light Domain Status with Color Temp / Mode
         if (domain === 'light' && stateObj.state === 'on') {
           const b = stateObj.attributes?.brightness;
           const pct = b !== undefined ? Math.round((b / 255) * 100) : 100;
@@ -1684,16 +1728,26 @@ export class AntigravityWithIconCard extends LitElement {
 
   // --- THROTTLED SERVICE CALL HELPER ---
 
-  private _throttledCall(key: string, fn: () => void): void {
+  private _throttledCall(key: string, fn: () => void, delayMs = 100): void {
+    const last = this._throttleMap.get(key) ?? 0;
     const now = Date.now();
-    if (now - (this._throttleMap.get(key) ?? 0) < 100) return;
+    if (now - last < delayMs) return;
     this._throttleMap.set(key, now);
-    fn();
+    try {
+      fn();
+    } finally {
+      // Auto-prune throttle entry after cooldown to keep memory clean
+      setTimeout(() => {
+        if (this._throttleMap.get(key) === now) {
+          this._throttleMap.delete(key);
+        }
+      }, delayMs + 50);
+    }
   }
 
   // --- GENERIC SLIDER GESTURE & SCROLL DISAMBIGUATION ---
 
-  private _sliderStateMap = new Map<HTMLInputElement, {
+  private _sliderStateMap = new WeakMap<HTMLInputElement, {
     startX: number;
     startY: number;
     initialVal: number;
@@ -2561,15 +2615,21 @@ export class AntigravityWithIconCard extends LitElement {
     const step = stateObj.attributes.percentage_step ?? 1;
     return this._renderGenericSlider(
       'fan', 'Fan Speed', 0, 100, step, pct, pct, 'fan', 'set_percentage',
-      (v) => ({ percentage: v }), (v) => v, (_, p) => `${p}%`
+      (v) => {
+        const snapped = step > 1 ? Math.round(v / step) * step : v;
+        return { percentage: Math.min(100, Math.max(0, snapped)) };
+      }, (v) => v, (_, p) => `${p}%`
     );
   }
 
   private _renderMediaSlider(stateObj: any) {
-    const vol = Math.round((stateObj.attributes.volume_level ?? 0) * 100);
+    const isMuted = stateObj.attributes.is_volume_muted === true;
+    const vol = isMuted ? 0 : Math.round((stateObj.attributes.volume_level ?? 0) * 100);
+    const label = isMuted ? 'Muted (0%)' : undefined;
     return this._renderGenericSlider(
       'media', 'Volume', 0, 100, 1, vol, vol, 'media_player', 'volume_set',
-      (v) => ({ volume_level: v / 100 }), (v) => v, (_, p) => `${p}%`
+      (v) => ({ volume_level: v / 100 }), (v) => v, (_, p) => (isMuted ? 'Muted' : `${p}%`),
+      'media', '', label
     );
   }
 
@@ -2583,10 +2643,14 @@ export class AntigravityWithIconCard extends LitElement {
     const pct = range > 0 ? Math.max(0, Math.min(100, Math.round(((val - min) / range) * 100))) : 0;
     const svcDomain = (this.config.entity || 'number').split('.')[0];
     const unit = stateObj.attributes.unit_of_measurement ? ` ${stateObj.attributes.unit_of_measurement}` : '';
+    const stepStr = step.toString();
+    const precision = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
+
     return this._renderGenericSlider(
       'number', 'Value', min, max, step, val, pct, svcDomain, 'set_value',
-      (v) => ({ value: v }), (v) => range > 0 ? Math.round(((v - min) / range) * 100) : 0, 
-      (v) => `${step < 1 ? Number(v).toFixed(1) : v}${unit}`
+      (v) => ({ value: precision > 0 ? Number(v.toFixed(precision)) : Math.round(v) }),
+      (v) => range > 0 ? Math.round(((v - min) / range) * 100) : 0, 
+      (v) => `${precision > 0 ? Number(v).toFixed(precision) : Math.round(Number(v))}${unit}`
     );
   }
 
@@ -3106,7 +3170,7 @@ export class AntigravityWithIconCard extends LitElement {
         cursor: pointer;
         box-sizing: border-box;
         overflow: hidden;
-        contain: layout style;
+        contain: layout paint style;
         -webkit-tap-highlight-color: transparent;
         -webkit-touch-callout: none;
         user-select: none;
@@ -3126,7 +3190,11 @@ export class AntigravityWithIconCard extends LitElement {
         transform: translate3d(0, 0, 0);
         backface-visibility: hidden;
       }
-      .sub-button:hover, .sub-button:active {
+      .sub-button:hover {
+        will-change: transform, background, color;
+      }
+      .sub-button:active {
+        transform: scale(0.93) translate3d(0, 0, 0) !important;
         will-change: transform, background, color;
       }
       .warning-card {
