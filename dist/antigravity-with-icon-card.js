@@ -1837,7 +1837,7 @@ var oo = Object.defineProperty, ro = Object.getOwnPropertyDescriptor, re = (t, e
     (a = t[n]) && (r = (o ? a(e, i, r) : a(r)) || r);
   return o && r && oo(e, i, r), r;
 };
-const no = "120";
+const no = "121";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${no} `,
   "color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;",
@@ -1897,7 +1897,21 @@ const ao = /* @__PURE__ */ new Set([
   "black",
   "white",
   "disabled"
-]), lo = /* @__PURE__ */ new Set(["hs", "xy", "rgb", "rgbw", "rgbww"]), ti = /^\d+\s*,\s*\d+\s*,\s*\d+$/, co = /^\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+$/;
+]), lo = /* @__PURE__ */ new Set(["hs", "xy", "rgb", "rgbw", "rgbww"]), co = /* @__PURE__ */ new Set([
+  "binary_sensor",
+  "sensor",
+  "camera",
+  "weather",
+  "sun",
+  "zone",
+  "person",
+  "device_tracker",
+  "update",
+  "image",
+  "calendar",
+  "event",
+  "counter"
+]), ti = /^\d+\s*,\s*\d+\s*,\s*\d+$/, uo = /^\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+$/;
 function I(t) {
   const e = Math.max(1e3, Math.min(4e4, t)) / 100;
   let i, o, r;
@@ -1926,7 +1940,7 @@ function I(t) {
 function Ze(t) {
   return !Array.isArray(t) || t.length < 3 ? "#ffffff" : "#" + t.slice(0, 3).map((e) => Math.round(Number(e) || 0).toString(16).padStart(2, "0")).join("");
 }
-function uo(t, e, i) {
+function ho(t, e, i) {
   t /= 255, e /= 255, i /= 255;
   const o = Math.max(t, e, i), r = Math.min(t, e, i);
   let n = 0;
@@ -1982,28 +1996,28 @@ const bt = [
   { hex: "#e91e63", label: "Pink", rgb: [233, 30, 99] },
   { hex: "#ffffff", label: "White", rgb: [255, 255, 255] },
   { hex: "#ffe0b2", label: "Warm", rgb: [255, 224, 178] }
-], ho = [
+], _o = [
   { k: 2200, label: "2200K", rgb: I(2200) },
   { k: 2700, label: "2700K", rgb: I(2700) },
   { k: 3e3, label: "3000K", rgb: I(3e3) },
   { k: 4e3, label: "4000K", rgb: I(4e3) },
   { k: 5e3, label: "5000K", rgb: I(5e3) },
   { k: 6500, label: "6500K", rgb: I(6500) }
-], ke = /* @__PURE__ */ new Map(), _o = 200;
+], ke = /* @__PURE__ */ new Map(), po = 200;
 function N(t) {
   if (!t) return null;
   const e = t.trim().toLowerCase();
   if (!e) return null;
   const i = ke.get(e);
   if (i !== void 0) return i;
-  const o = po(e);
-  if (ke.size >= _o) {
+  const o = fo(e);
+  if (ke.size >= po) {
     const r = ke.keys().next().value;
     r && ke.delete(r);
   }
   return ke.set(e, o), o;
 }
-function po(t) {
+function fo(t) {
   if (t.startsWith("#")) {
     const e = t.slice(1);
     if (e.length === 3)
@@ -2071,7 +2085,7 @@ function L(t, e = !0) {
     }
 }
 const se = /* @__PURE__ */ new Map(), qt = 250;
-function fo(t) {
+function go(t) {
   if (!t) return "";
   const e = se.get(t);
   if (e !== void 0) return e;
@@ -2079,7 +2093,7 @@ function fo(t) {
   if (!i)
     return se.set(t, ""), "";
   let o = i;
-  if (i.startsWith("#") || i.startsWith("rgb") || i.startsWith("hsl") || i.startsWith("var(") ? o = i : ti.test(i) ? o = `rgb(${i})` : co.test(i) ? o = `rgba(${i})` : i.toLowerCase() === "state" ? o = "var(--state-icon-color, var(--primary-color))" : so.has(i.toLowerCase()) && (o = `var(--${i.toLowerCase()}-color, ${i.toLowerCase()})`), se.size >= qt) {
+  if (i.startsWith("#") || i.startsWith("rgb") || i.startsWith("hsl") || i.startsWith("var(") ? o = i : ti.test(i) ? o = `rgb(${i})` : uo.test(i) ? o = `rgba(${i})` : i.toLowerCase() === "state" ? o = "var(--state-icon-color, var(--primary-color))" : so.has(i.toLowerCase()) && (o = `var(--${i.toLowerCase()}-color, ${i.toLowerCase()})`), se.size >= qt) {
     const r = Math.floor(qt / 4), n = se.keys();
     for (let a = 0; a < r; a++) {
       const l = n.next().value;
@@ -2408,7 +2422,7 @@ let U = class extends ce {
     };
   }
   _resolveColor(t) {
-    return fo(t);
+    return go(t);
   }
   // Shared date parser — eliminates duplication between _formatRelativeTime and _formatForDuration
   _parseDate(t) {
@@ -2565,40 +2579,56 @@ let U = class extends ce {
   }
   // _pointerDownTime: reserved for future gesture duration checks
   _dispatchAction(t, e, i) {
-    const o = i || this.config.entity;
-    let r = e;
-    if (r || (t === "double_tap" ? r = this.config.double_tap_action : t === "hold" ? r = this.config.hold_action : r = this.config.tap_action || { action: "toggle" }), !(!r || r.action === "none")) {
-      if (r.action === "more-info") {
-        const n = r.entity || o;
-        if (n) {
+    const o = i || this.config.entity, r = o ? o.split(".")[0] : "", n = co.has(r);
+    let a = e;
+    if (a || (t === "double_tap" ? a = this.config.double_tap_action : t === "hold" ? a = this.config.hold_action : this.config.tap_action ? a = this.config.tap_action : a = n ? { action: "more-info" } : { action: "toggle" }), !(!a || a.action === "none")) {
+      if (a.action === "more-info") {
+        const l = a.entity || o;
+        if (l) {
           this.dispatchEvent(new CustomEvent("hass-more-info", {
-            detail: { entityId: n },
+            detail: { entityId: l },
             bubbles: !0,
             composed: !0
           }));
           return;
         }
       }
-      if (r.action === "toggle" && o) {
-        const n = o.split(".")[0], a = n === "lock" ? this._isEntityActive(this.hass?.states[o]) ? "lock" : "unlock" : "toggle", l = ["lock", "cover"].includes(n) ? n : n === "group" ? "homeassistant" : n;
-        this.hass?.callService(l, a, { entity_id: o });
+      if (a.action === "toggle" && o) {
+        if (n) {
+          this.dispatchEvent(new CustomEvent("hass-more-info", {
+            detail: { entityId: o },
+            bubbles: !0,
+            composed: !0
+          }));
+          return;
+        }
+        const l = r === "lock" ? this._isEntityActive(this.hass?.states[o]) ? "lock" : "unlock" : "toggle", s = ["lock", "cover"].includes(r) ? r : r === "group" ? "homeassistant" : r;
+        this.hass?.callService(s, l, { entity_id: o });
         return;
       }
-      if (r.action === "navigate" && r.navigation_path) {
-        history.pushState(null, "", r.navigation_path), window.dispatchEvent(new CustomEvent("location-changed", {
+      if (a.action === "navigate" && a.navigation_path) {
+        history.pushState(null, "", a.navigation_path), window.dispatchEvent(new CustomEvent("location-changed", {
           detail: { replace: !1 },
           bubbles: !0,
           composed: !0
         }));
         return;
       }
-      if (r.action === "url" && r.url_path) {
-        window.open(r.url_path, "_blank");
+      if (a.action === "url" && a.url_path) {
+        window.open(a.url_path, "_blank");
         return;
       }
-      if (r.action === "call-service" && r.service) {
-        const [n, a] = r.service.split(".", 2);
-        this.hass?.callService(n, a, r.data || r.service_data || {}, r.target);
+      if (a.action === "call-service" && a.service) {
+        const [l, s] = a.service.split(".", 2);
+        this.hass?.callService(l, s, a.data || a.service_data || {}, a.target);
+        return;
+      }
+      if (n && (!a.action || a.action === "toggle")) {
+        this.dispatchEvent(new CustomEvent("hass-more-info", {
+          detail: { entityId: o },
+          bubbles: !0,
+          composed: !0
+        }));
         return;
       }
       Wt(this, this.hass, { ...this.config, entity: o }, t);
@@ -2802,7 +2832,7 @@ let U = class extends ce {
       return Math.round(t.attributes.hs_color[0]) % 360;
     if (Array.isArray(t.attributes?.rgb_color) && t.attributes.rgb_color.length >= 3) {
       const [e, i, o] = t.attributes.rgb_color;
-      return uo(e, i, o);
+      return ho(e, i, o);
     }
     return 0;
   }
@@ -3018,7 +3048,7 @@ let U = class extends ce {
       ].filter(Boolean).join(" ");
       return $`
         <div class="presets-row" style="display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; ${S}">
-          ${ho.map((m) => {
+          ${_o.map((m) => {
         const [k, v, w] = m.rgb, C = Math.abs(n - m.k) < 200;
         return $`
               <button 

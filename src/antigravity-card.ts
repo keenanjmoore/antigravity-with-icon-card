@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "120";
+export const CARD_VERSION = "121";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -54,6 +54,10 @@ const HA_NAMED_COLORS = new Set([
 ]);
 
 const COLOR_MODES_SET = new Set(['hs', 'xy', 'rgb', 'rgbw', 'rgbww']);
+const NON_TOGGLEABLE_DOMAINS = new Set([
+  'binary_sensor', 'sensor', 'camera', 'weather', 'sun', 'zone', 
+  'person', 'device_tracker', 'update', 'image', 'calendar', 'event', 'counter'
+]);
 
 // ---- Regex Constants (Module-Level for Performance) ----
 const RGB_TRIPLET_REGEX = /^\d+\s*,\s*\d+\s*,\s*\d+$/;
@@ -1229,11 +1233,20 @@ export class AntigravityWithIconCard extends LitElement {
 
   private _dispatchAction(actionType: 'tap' | 'hold' | 'double_tap', actionConfigOverride?: any, entityOverride?: string) {
     const entity = entityOverride || this.config.entity;
+    const domain = entity ? entity.split('.')[0] : '';
+    const isNonToggleable = NON_TOGGLEABLE_DOMAINS.has(domain);
+
     let actionConfig = actionConfigOverride;
     if (!actionConfig) {
       if (actionType === 'double_tap') actionConfig = this.config.double_tap_action;
       else if (actionType === 'hold') actionConfig = this.config.hold_action;
-      else actionConfig = this.config.tap_action || { action: 'toggle' };
+      else {
+        if (this.config.tap_action) {
+          actionConfig = this.config.tap_action;
+        } else {
+          actionConfig = isNonToggleable ? { action: 'more-info' } : { action: 'toggle' };
+        }
+      }
     }
 
     if (!actionConfig || actionConfig.action === 'none') return;
@@ -1251,7 +1264,16 @@ export class AntigravityWithIconCard extends LitElement {
     }
 
     if (actionConfig.action === 'toggle' && entity) {
-      const domain = entity.split('.')[0];
+      if (isNonToggleable) {
+        // Safe guard: binary_sensor, sensor, etc. do NOT have a toggle service in Home Assistant.
+        // Fallback to more-info dialog so HA does not show "action binary_sensor.toggle not found".
+        this.dispatchEvent(new CustomEvent('hass-more-info', {
+          detail: { entityId: entity },
+          bubbles: true,
+          composed: true,
+        }));
+        return;
+      }
       const service = domain === 'lock' ? (this._isEntityActive(this.hass?.states[entity]) ? 'lock' : 'unlock')
                     : 'toggle';
       const sDomain = ['lock', 'cover'].includes(domain) ? domain : (domain === 'group' ? 'homeassistant' : domain);
@@ -1280,7 +1302,16 @@ export class AntigravityWithIconCard extends LitElement {
       return;
     }
 
-    // Fallback to custom-card-helpers
+    // Fallback to custom-card-helpers (with non-toggleable guard)
+    if (isNonToggleable && (!actionConfig.action || actionConfig.action === 'toggle')) {
+      this.dispatchEvent(new CustomEvent('hass-more-info', {
+        detail: { entityId: entity },
+        bubbles: true,
+        composed: true,
+      }));
+      return;
+    }
+
     handleAction(this, this.hass, { ...this.config, entity }, actionType);
   }
 
