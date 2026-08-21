@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "115";
+export const CARD_VERSION = "116";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',

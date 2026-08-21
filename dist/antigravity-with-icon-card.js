@@ -1837,7 +1837,7 @@ var oo = Object.defineProperty, ro = Object.getOwnPropertyDescriptor, ie = (t, e
     (a = t[n]) && (r = (o ? a(e, i, r) : a(r)) || r);
   return o && r && oo(e, i, r), r;
 };
-const no = "115";
+const no = "116";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${no} `,
   "color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;",
