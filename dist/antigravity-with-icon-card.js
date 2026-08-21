@@ -249,7 +249,7 @@ let le = class extends HTMLElement {
 le.elementStyles = [], le.shadowRootOptions = { mode: "open" }, le[Te("elementProperties")] = /* @__PURE__ */ new Map(), le[Te("finalized")] = /* @__PURE__ */ new Map(), _i?.({ ReactiveElement: le }), (tt.reactiveElementVersions ??= []).push("2.1.2");
 const $t = globalThis, Lt = (t) => t, et = $t.trustedTypes, Rt = et ? et.createPolicy("lit-html", { createHTML: (t) => t }) : void 0, Zt = "$lit$", X = `lit$${Math.random().toFixed(9).slice(2)}$`, Qt = "?" + X, pi = `<${Qt}>`, ie = document, Ae = () => ie.createComment(""), Me = (t) => t === null || typeof t != "object" && typeof t != "function", wt = Array.isArray, fi = (t) => wt(t) || typeof t?.[Symbol.iterator] == "function", ht = `[ 	
 \f\r]`, we = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, Nt = /-->/g, Ht = />/g, j = RegExp(`>|${ht}(?:([^\\s"'>=/]+)(${ht}*=${ht}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), Bt = /'/g, Dt = /"/g, Jt = /^(?:script|style|textarea|title)$/i, gi = (t) => (e, ...i) => ({ _$litType$: t, strings: e, values: i }), $ = gi(1), oe = Symbol.for("lit-noChange"), b = Symbol.for("lit-nothing"), Ot = /* @__PURE__ */ new WeakMap(), te = ie.createTreeWalker(ie, 129);
+\f\r"'\`<>=]|("|')|))|$)`, "g"), Dt = /'/g, Bt = /"/g, Jt = /^(?:script|style|textarea|title)$/i, gi = (t) => (e, ...i) => ({ _$litType$: t, strings: e, values: i }), $ = gi(1), oe = Symbol.for("lit-noChange"), b = Symbol.for("lit-nothing"), Ot = /* @__PURE__ */ new WeakMap(), te = ie.createTreeWalker(ie, 129);
 function jt(t, e) {
   if (!wt(t) || !t.hasOwnProperty("raw")) throw Error("invalid template strings array");
   return Rt !== void 0 ? Rt.createHTML(e) : e;
@@ -260,7 +260,7 @@ const mi = (t, e) => {
   for (let l = 0; l < i; l++) {
     const s = t[l];
     let _, c, d = -1, u = 0;
-    for (; u < s.length && (a.lastIndex = u, c = a.exec(s), c !== null); ) u = a.lastIndex, a === we ? c[1] === "!--" ? a = Nt : c[1] !== void 0 ? a = Ht : c[2] !== void 0 ? (Jt.test(c[2]) && (r = RegExp("</" + c[2], "g")), a = j) : c[3] !== void 0 && (a = j) : a === j ? c[0] === ">" ? (a = r ?? we, d = -1) : c[1] === void 0 ? d = -2 : (d = a.lastIndex - c[2].length, _ = c[1], a = c[3] === void 0 ? j : c[3] === '"' ? Dt : Bt) : a === Dt || a === Bt ? a = j : a === Nt || a === Ht ? a = we : (a = j, r = void 0);
+    for (; u < s.length && (a.lastIndex = u, c = a.exec(s), c !== null); ) u = a.lastIndex, a === we ? c[1] === "!--" ? a = Nt : c[1] !== void 0 ? a = Ht : c[2] !== void 0 ? (Jt.test(c[2]) && (r = RegExp("</" + c[2], "g")), a = j) : c[3] !== void 0 && (a = j) : a === j ? c[0] === ">" ? (a = r ?? we, d = -1) : c[1] === void 0 ? d = -2 : (d = a.lastIndex - c[2].length, _ = c[1], a = c[3] === void 0 ? j : c[3] === '"' ? Bt : Dt) : a === Bt || a === Dt ? a = j : a === Nt || a === Ht ? a = we : (a = j, r = void 0);
     const f = a === j && t[l + 1].startsWith("/>") ? " " : "";
     n += a === we ? s + pi : d >= 0 ? (o.push(_), s.slice(0, d) + Zt + s.slice(d) + X + f) : s + X + (d === -2 ? l : f);
   }
@@ -577,14 +577,14 @@ const { I: Ri } = wi, zt = (t) => t, It = () => document.createComment(""), Se =
     }
   }
   return i;
-}, ee = (t, e, i = t) => (t._$AI(e, i), t), Ni = {}, Hi = (t, e = Ni) => t._$AH = e, Bi = (t) => t._$AH, _t = (t) => {
+}, ee = (t, e, i = t) => (t._$AI(e, i), t), Ni = {}, Hi = (t, e = Ni) => t._$AH = e, Di = (t) => t._$AH, _t = (t) => {
   t._$AR(), t._$AA.remove();
 };
 const Ut = (t, e, i) => {
   const o = /* @__PURE__ */ new Map();
   for (let r = e; r <= i; r++) o.set(t[r], r);
   return o;
-}, Di = Ei(class extends Li {
+}, Bi = Ei(class extends Li {
   constructor(t) {
     if (super(t), t.type !== Pi.CHILD) throw Error("repeat() can only be used in text expressions");
   }
@@ -600,7 +600,7 @@ const Ut = (t, e, i) => {
     return this.dt(t, e, i).values;
   }
   update(t, [e, i, o]) {
-    const r = Bi(t), { values: n, keys: a } = this.dt(e, i, o);
+    const r = Di(t), { values: n, keys: a } = this.dt(e, i, o);
     if (!Array.isArray(r)) return this.ut = a, n;
     const l = this.ut ??= [], s = [];
     let _, c, d = 0, u = r.length - 1, f = 0, g = n.length - 1;
@@ -1837,7 +1837,7 @@ var oo = Object.defineProperty, ro = Object.getOwnPropertyDescriptor, re = (t, e
     (a = t[n]) && (r = (o ? a(e, i, r) : a(r)) || r);
   return o && r && oo(e, i, r), r;
 };
-const no = "121";
+const no = "122";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${no} `,
   "color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;",
@@ -2104,7 +2104,7 @@ function go(t) {
 }
 let U = class extends ce {
   constructor() {
-    super(...arguments), this._previousLiveRgb = null, this._currentLiveRgb = null, this._lastTrackedState = null, this.preview = !1, this._collapsed = !0, this._holdTimer = null, this._held = !1, this._moved = !1, this._tapTimer = null, this._throttleMap = /* @__PURE__ */ new Map(), this._startX = 0, this._startY = 0, this._subHoldTimer = null, this._subHeld = !1, this._subMoved = !1, this._subStartX = 0, this._subStartY = 0, this._subTapTimerMap = /* @__PURE__ */ new Map(), this._monitoredEntities = [], this._staticCardStyles = "", this._staticCardClasses = "", this._textOffsetStyle = "", this._iconOffsetStyle = "", this._featuresOffsetStyle = "", this._mainSliderMarginOffsets = "", this._colorTempMarginOffsets = "", this._colorHueMarginOffsets = "", this._textBoxWidth = "", this._primaryTextStyle = "", this._secondaryTextStyle = "", this._primaryTextOffsetStyle = "", this._secondaryTextOffsetStyle = "", this._iconShapeClass = "", this._iconAnimClass = "", this._iconContainerSize = 36, this._iconSize = 24, this._iconOpacityStyle = "", this._iconRotateStyle = "", this._fadeStaticConfig = null, this._relativeTimer = null, this._cachedSubButtons = null, this._intersectionObserver = null, this._cachedHasCollapsible = !1, this._canceled = !1, this._subCanceled = !1, this._subPointerDownTime = 0, this._sliderStateMap = /* @__PURE__ */ new Map(), this._onSliderPointerDown = (t) => {
+    super(...arguments), this._previousLiveRgb = null, this._currentLiveRgb = null, this._lastTrackedState = null, this.preview = !1, this._collapsed = !0, this._holdTimer = null, this._held = !1, this._moved = !1, this._tapTimer = null, this._throttleMap = /* @__PURE__ */ new Map(), this._startX = 0, this._startY = 0, this._subHoldTimer = null, this._subHeld = !1, this._subMoved = !1, this._subStartX = 0, this._subStartY = 0, this._subTapTimerMap = /* @__PURE__ */ new Map(), this._monitoredEntities = [], this._staticCardStyles = "", this._staticCardClasses = "", this._textOffsetStyle = "", this._iconOffsetStyle = "", this._featuresOffsetStyle = "", this._mainSliderMarginOffsets = "", this._colorTempMarginOffsets = "", this._colorHueMarginOffsets = "", this._textBoxWidth = "", this._primaryTextStyle = "", this._secondaryTextStyle = "", this._primaryTextOffsetStyle = "", this._secondaryTextOffsetStyle = "", this._iconShapeClass = "", this._iconAnimClass = "", this._iconContainerSize = 36, this._iconSize = 24, this._iconOpacityStyle = "", this._iconRotateStyle = "", this._fadeStaticConfig = null, this._relativeTimer = null, this._cachedSubButtons = null, this._intersectionObserver = null, this._cachedHasCollapsible = !1, this._mountTime = 0, this._pointerDownReceived = !1, this._canceled = !1, this._subCanceled = !1, this._subPointerDownTime = 0, this._sliderStateMap = /* @__PURE__ */ new Map(), this._onSliderPointerDown = (t) => {
       const e = t.currentTarget;
       if (!e) return;
       const o = e.closest(".slider-container, .sub-button-slider-container")?.querySelector(".slider-percent-badge, .sub-slider-pct"), r = Number(e.value) || 0, n = e.style.getPropertyValue("--slider-pct") || "", a = o?.textContent || "";
@@ -2178,7 +2178,7 @@ let U = class extends ce {
     const t = this.config.card_padding ?? 12, e = this.config.card_padding_vertical ?? 4, i = this.config.card_padding_horizontal ?? t, o = this.config.card_padding_top ?? e, r = this.config.card_padding_bottom ?? e, n = this.config.card_padding_left ?? i, a = this.config.card_padding_right ?? i, l = this.config.card_margin, s = this.config.card_margin_vertical ?? l, _ = this.config.card_margin_horizontal ?? l, c = this.config.card_margin_top ?? s, d = this.config.card_margin_bottom ?? s, u = this.config.card_margin_left ?? _, f = this.config.card_margin_right ?? _;
     let g = "";
     (c !== void 0 || d !== void 0 || u !== void 0 || f !== void 0) && (g = `margin: ${c ?? 0}px ${f ?? 0}px ${d ?? 0}px ${u ?? 0}px;`);
-    const y = this.config.border_radius ?? 12, p = this.config.slider_style === "google", S = this.config.slider_style === "full", m = p ? 42 : S ? 40 : 12, k = this.config.slider_height !== void 0 ? this.config.slider_height : m, v = p ? 21 : S ? 0 : k / 2, w = this.config.slider_border_radius !== void 0 ? this.config.slider_border_radius : v, C = this.config.card_border_width ?? (this.config.card_border_color ? 1 : 0), h = this.config.card_border_style ?? "solid", x = C > 0 ? `border: ${C}px ${h} ${this._resolveColor(this.config.card_border_color) || "var(--divider-color, rgba(150, 150, 150, 0.2))"};` : "", T = this.config.card_width ? `width: ${this.config.card_width};` : "", F = this.config.card_max_width ? `max-width: ${this.config.card_max_width};` : "", he = this.config.card_height ? `height: ${this.config.card_height};` : "", _e = this.config.card_min_height !== void 0 ? `min-height: ${this.config.card_min_height}px;` : "", K = this.config.fill_container === !0 ? "height: 100%; width: 100%;" : "", Le = this.config.overflow_hidden !== !1 ? "overflow: hidden;" : "overflow: visible;", st = this.config.backdrop_blur !== void 0 ? `backdrop-filter: blur(${this.config.backdrop_blur}px); -webkit-backdrop-filter: blur(${this.config.backdrop_blur}px);` : "", pe = this.config.card_opacity !== void 0 ? `opacity: ${this.config.card_opacity / 100};` : "", Re = this.config.transition_duration !== void 0 ? `transition: all ${this.config.transition_duration}ms ease;` : "", Ne = this.config.icon_padding !== void 0 ? `--ag-icon-padding: ${this.config.icon_padding}px;` : "", fe = this.config.text_padding_vertical ?? this.config.text_padding ?? 0, He = this.config.text_padding_horizontal ?? this.config.text_padding ?? 0, lt = this.config.features_padding_vertical ?? this.config.features_padding ?? 0, Be = this.config.features_padding_horizontal ?? this.config.features_padding ?? 0, De = this.config.sub_button_padding ?? 0, Oe = this.config.sub_button_container_padding ?? 0, ze = this.config.sub_button_alignment ? `--ag-sub-button-alignment: ${this.config.sub_button_alignment};` : "", H = this.config.text_scrolling_speed ? `--ag-scroll-speed: ${this.config.text_scrolling_speed}s;` : "", Ie = this.config.full_slider_opacity !== void 0 ? `--ag-full-slider-opacity: ${this.config.full_slider_opacity / 100};` : "";
+    const y = this.config.border_radius ?? 12, p = this.config.slider_style === "google", S = this.config.slider_style === "full", m = p ? 42 : S ? 40 : 12, k = this.config.slider_height !== void 0 ? this.config.slider_height : m, v = p ? 21 : S ? 0 : k / 2, w = this.config.slider_border_radius !== void 0 ? this.config.slider_border_radius : v, C = this.config.card_border_width ?? (this.config.card_border_color ? 1 : 0), h = this.config.card_border_style ?? "solid", x = C > 0 ? `border: ${C}px ${h} ${this._resolveColor(this.config.card_border_color) || "var(--divider-color, rgba(150, 150, 150, 0.2))"};` : "", T = this.config.card_width ? `width: ${this.config.card_width};` : "", F = this.config.card_max_width ? `max-width: ${this.config.card_max_width};` : "", he = this.config.card_height ? `height: ${this.config.card_height};` : "", _e = this.config.card_min_height !== void 0 ? `min-height: ${this.config.card_min_height}px;` : "", K = this.config.fill_container === !0 ? "height: 100%; width: 100%;" : "", Le = this.config.overflow_hidden !== !1 ? "overflow: hidden;" : "overflow: visible;", st = this.config.backdrop_blur !== void 0 ? `backdrop-filter: blur(${this.config.backdrop_blur}px); -webkit-backdrop-filter: blur(${this.config.backdrop_blur}px);` : "", pe = this.config.card_opacity !== void 0 ? `opacity: ${this.config.card_opacity / 100};` : "", Re = this.config.transition_duration !== void 0 ? `transition: all ${this.config.transition_duration}ms ease;` : "", Ne = this.config.icon_padding !== void 0 ? `--ag-icon-padding: ${this.config.icon_padding}px;` : "", fe = this.config.text_padding_vertical ?? this.config.text_padding ?? 0, He = this.config.text_padding_horizontal ?? this.config.text_padding ?? 0, lt = this.config.features_padding_vertical ?? this.config.features_padding ?? 0, De = this.config.features_padding_horizontal ?? this.config.features_padding ?? 0, Be = this.config.sub_button_padding ?? 0, Oe = this.config.sub_button_container_padding ?? 0, ze = this.config.sub_button_alignment ? `--ag-sub-button-alignment: ${this.config.sub_button_alignment};` : "", H = this.config.text_scrolling_speed ? `--ag-scroll-speed: ${this.config.text_scrolling_speed}s;` : "", Ie = this.config.full_slider_opacity !== void 0 ? `--ag-full-slider-opacity: ${this.config.full_slider_opacity / 100};` : "";
     this._staticCardStyles = [
       g,
       `border-radius: ${y}px;`,
@@ -2195,8 +2195,8 @@ let U = class extends ce {
       Ne,
       `--ag-card-padding: ${o}px ${a}px ${r}px ${n}px;`,
       `--ag-text-padding: ${fe}px ${He}px;`,
-      `--ag-features-padding: ${lt}px ${Be}px;`,
-      `--ag-sub-button-padding: ${De}px;`,
+      `--ag-features-padding: ${lt}px ${De}px;`,
+      `--ag-sub-button-padding: ${Be}px;`,
       `--ag-sub-button-container-padding: ${Oe}px;`,
       `--ag-content-spacing: ${this.config.content_spacing ?? 12}px;`,
       `--ag-text-spacing: ${this.config.text_spacing ?? 2}px;`,
@@ -2225,8 +2225,8 @@ let U = class extends ce {
     this._textOffsetStyle = ge !== 0 || me !== 0 ? `transform: translate(${ge}px, ${me}px);` : "";
     const Z = Number(this.config.primary_text_start_offset ?? this.config.primary_text_offset_x) || 0, be = Number(this.config.primary_text_end_offset) || 0, ve = Number(this.config.primary_text_offset_y) || 0, ct = Z !== 0 || ve !== 0 ? `transform: translate(${Z}px, ${ve}px);` : "", dt = Z !== 0 || be !== 0 ? `margin-left: ${Z}px; margin-right: ${be}px;` : "";
     this._primaryTextOffsetStyle = `${ct} ${dt}`.trim();
-    const ne = Number(this.config.secondary_text_start_offset ?? this.config.secondary_text_offset_x) || 0, P = Number(this.config.secondary_text_end_offset) || 0, G = Number(this.config.secondary_text_offset_y) || 0, Ue = ne !== 0 || G !== 0 ? `transform: translate(${ne}px, ${G}px);` : "", B = ne !== 0 || P !== 0 ? `margin-left: ${ne}px; margin-right: ${P}px;` : "";
-    this._secondaryTextOffsetStyle = `${Ue} ${B}`.trim();
+    const ne = Number(this.config.secondary_text_start_offset ?? this.config.secondary_text_offset_x) || 0, P = Number(this.config.secondary_text_end_offset) || 0, G = Number(this.config.secondary_text_offset_y) || 0, Ue = ne !== 0 || G !== 0 ? `transform: translate(${ne}px, ${G}px);` : "", D = ne !== 0 || P !== 0 ? `margin-left: ${ne}px; margin-right: ${P}px;` : "";
+    this._secondaryTextOffsetStyle = `${Ue} ${D}`.trim();
     const ye = Number(this.config.icon_offset_x) || 0, ae = Number(this.config.icon_offset_y) || 0;
     this._iconOffsetStyle = ye !== 0 || ae !== 0 ? `transform: translate(${ye}px, ${ae}px);` : "";
     const Q = Number(this.config.features_offset_x) || 0, Fe = Number(this.config.features_offset_y) || 0;
@@ -2246,8 +2246,8 @@ let U = class extends ce {
       Ye ? `margin-left: ${Ye}px !important;` : "",
       qe ? `margin-right: ${qe}px !important;` : ""
     ].filter(Boolean).join(" "), this._textBoxWidth = this.config.text_box_width ? `max-width: ${this.config.text_box_width}; width: ${this.config.text_box_width};` : "width: 100%; max-width: 100%;";
-    const xe = this.config.text_transform_primary && this.config.text_transform_primary !== "none" ? `text-transform: ${this.config.text_transform_primary};` : "", W = `text-transform: ${this.config.text_transform_secondary ?? "capitalize"};`, D = this.config.letter_spacing ? `letter-spacing: ${this.config.letter_spacing}px;` : "", O = this.config.line_height ? `line-height: ${this.config.line_height};` : "", Xe = this.config.font_weight_primary ?? "800";
-    this._primaryTextStyle = `font-size: ${this.config.font_size_primary ?? 14}px; font-weight: ${Xe}; ${xe} ${D} ${O}`, this._secondaryTextStyle = `font-size: ${this.config.font_size_secondary ?? 15}px; ${W} ${D} ${O}`, this._iconShapeClass = `icon-shape-${this.config.icon_shape || "circle"}`, this._iconAnimClass = `anim-${this.config.icon_animation || "none"}`, this._iconContainerSize = this.config.icon_container_size ?? (this.config.card_layout === "large" ? 48 : 36), this._iconSize = this.config.icon_size ?? 24, this._iconOpacityStyle = this.config.icon_opacity !== void 0 && this.config.icon_opacity < 100 ? `opacity: ${this.config.icon_opacity / 100};` : "", this._iconRotateStyle = this.config.icon_rotate && this.config.icon_rotate !== 0 ? `transform: rotate(${this.config.icon_rotate}deg);` : "";
+    const xe = this.config.text_transform_primary && this.config.text_transform_primary !== "none" ? `text-transform: ${this.config.text_transform_primary};` : "", W = `text-transform: ${this.config.text_transform_secondary ?? "capitalize"};`, B = this.config.letter_spacing ? `letter-spacing: ${this.config.letter_spacing}px;` : "", O = this.config.line_height ? `line-height: ${this.config.line_height};` : "", Xe = this.config.font_weight_primary ?? "800";
+    this._primaryTextStyle = `font-size: ${this.config.font_size_primary ?? 14}px; font-weight: ${Xe}; ${xe} ${B} ${O}`, this._secondaryTextStyle = `font-size: ${this.config.font_size_secondary ?? 15}px; ${W} ${B} ${O}`, this._iconShapeClass = `icon-shape-${this.config.icon_shape || "circle"}`, this._iconAnimClass = `anim-${this.config.icon_animation || "none"}`, this._iconContainerSize = this.config.icon_container_size ?? (this.config.card_layout === "large" ? 48 : 36), this._iconSize = this.config.icon_size ?? 24, this._iconOpacityStyle = this.config.icon_opacity !== void 0 && this.config.icon_opacity < 100 ? `opacity: ${this.config.icon_opacity / 100};` : "", this._iconRotateStyle = this.config.icon_rotate && this.config.icon_rotate !== 0 ? `transform: rotate(${this.config.icon_rotate}deg);` : "";
     const ut = this.config.entity, Ke = [];
     for (let A = 1; A <= 4; A++) {
       const V = this.config[`sub_button_${A}_entity`], Y = this.config[`sub_button_${A}_icon`], q = this.config[`sub_button_${A}_name`], $e = this.config[`sub_button_${A}_tap_action`], z = this.config[`sub_button_${A}_hold_action`], M = this.config[`sub_button_${A}_double_tap_action`], J = this.config[`sub_button_${A}_type`], ii = this.config[`sub_button_${A}_color`], oi = this.config[`sub_button_${A}_show_background`], Ct = this.config[`sub_button_${A}_show_state`];
@@ -2325,7 +2325,7 @@ let U = class extends ce {
     this._cachedHasCollapsible = g || y.length > 0;
   }
   connectedCallback() {
-    super.connectedCallback(), this._setupRelativeTimer(), this._setupIntersectionObserver();
+    super.connectedCallback(), this._mountTime = Date.now(), this._pointerDownReceived = !1, this._setupRelativeTimer(), this._setupIntersectionObserver();
   }
   _setupIntersectionObserver() {
     typeof IntersectionObserver > "u" || this._intersectionObserver || (this._intersectionObserver = new IntersectionObserver((t) => {
@@ -2636,7 +2636,13 @@ let U = class extends ce {
   }
   _handleTap(t) {
     if (t.stopPropagation(), this._isSubElement(t)) return;
-    if (this._moved || this._canceled) {
+    if (Date.now() - this._mountTime < 650) {
+      this._pointerDownReceived = !1;
+      return;
+    }
+    if (!this._pointerDownReceived && t instanceof MouseEvent && t.pointerType !== "mouse")
+      return;
+    if (this._pointerDownReceived = !1, this._moved || this._canceled) {
       this._moved = !1, this._canceled = !1;
       return;
     }
@@ -2658,14 +2664,14 @@ let U = class extends ce {
     }, 250);
   }
   _handleKeyDown(t) {
-    this._isSubElement(t) || (t.key === "Enter" || t.key === " ") && (t.preventDefault(), L("light", this.config.haptic_feedback !== !1), this._dispatchAction("tap"));
+    this._isSubElement(t) || Date.now() - this._mountTime < 1e3 || (t.key === "Enter" || t.key === " ") && (t.preventDefault(), L("light", this.config.haptic_feedback !== !1), this._dispatchAction("tap"));
   }
   _handleContextMenu(t) {
-    if (t.preventDefault(), t.stopPropagation(), this._held) return;
+    if (t.preventDefault(), t.stopPropagation(), Date.now() - this._mountTime < 650 || this._held) return;
     L("medium", this.config.haptic_feedback !== !1), (this.config.collapse_controls_trigger || "hold") === "hold" && this._hasCollapsible() ? this._collapsed = !this._collapsed : this.config.hold_action && this.config.hold_action.action !== "none" && this._dispatchAction("hold");
   }
   _handlePointerDown(t) {
-    this._isSubElement(t) || (this._held = !1, this._moved = !1, this._canceled = !1, this._startX = t.clientX, this._startY = t.clientY, this._holdTimer = setTimeout(() => {
+    this._isSubElement(t) || Date.now() - this._mountTime < 650 || (this._pointerDownReceived = !0, this._held = !1, this._moved = !1, this._canceled = !1, this._startX = t.clientX, this._startY = t.clientY, this._holdTimer = setTimeout(() => {
       if (this._moved || this._canceled) return;
       this._held = !0, this._holdTimer = null, this._tapTimer && (clearTimeout(this._tapTimer), this._tapTimer = null), L("heavy", this.config.haptic_feedback !== !1), (this.config.collapse_controls_trigger || "hold") === "hold" && this._hasCollapsible() ? this._collapsed = !this._collapsed : this.config.hold_action && this.config.hold_action.action !== "none" && this._dispatchAction("hold");
     }, 500));
@@ -2882,9 +2888,9 @@ let U = class extends ce {
         const J = pe[M];
         J !== "onoff" && (Re = !0), J === "color_temp" && (Ne = !0), lo.has(J) && (fe = !0);
       }
-    const He = w && v && Re && (!_e || r), lt = e.attributes?.color_temp_kelvin ?? e.attributes?.color_temp, Be = w && this.config.show_color_temp === !0 && (lt !== void 0 || Ne) && (!K || r), De = this.config.color_picker_type !== "wheel", Oe = w && (this.config.show_color_slider === !0 || this.config.show_color_picker === !0 && De) && fe && (!st || r), ze = w && this.config.show_color_picker === !0 && !De && fe && (!Le || r), H = e.state !== "unavailable" && e.state !== "unknown", Ie = C && H && v && e.attributes?.current_position !== void 0, ge = h && H && r && v && e.attributes?.percentage !== void 0, me = x && H && r && v && (e.attributes?.humidity !== void 0 || e.attributes?.target_humidity !== void 0), Z = T && H && r && v && e.attributes?.volume_level !== void 0, be = F && H && v, ve = he && H && r && v && (e.attributes?.temperature !== void 0 || e.attributes?.target_temp_high !== void 0), ct = (this.config.bg_opacity ?? 10) / 100, dt = this.config.slider_color ? `--slider-color: ${this._resolveColor(this.config.slider_color)};` : u && r && !this.config.use_light_color ? "--slider-color: rgba(255, 255, 255, 0.95);" : `--slider-color: ${f};`, ne = this.config.slider_track_color ? `--slider-track-color: ${this._resolveColor(this.config.slider_track_color)};` : u && r ? "--slider-track-color: rgba(0, 0, 0, 0.25);" : "", P = this._calculateMultiStageFade(e, c, y), G = this.config.fade_target ?? "card", Ue = this._resolveColor(this.config.bg_color);
-    let B;
-    P.activeFade && (G === "card" || G === "all" || u) ? B = P.currentColor : u ? n === "light" ? B = r ? d || f : this.config.inactive_color ? y : "#000000" : B = r ? f : y : Ue ? B = Ue : n === "light" && !r ? B = "#000000" : B = `rgba(150, 150, 150, ${ct})`;
+    const He = w && v && Re && (!_e || r), lt = e.attributes?.color_temp_kelvin ?? e.attributes?.color_temp, De = w && this.config.show_color_temp === !0 && (lt !== void 0 || Ne) && (!K || r), Be = this.config.color_picker_type !== "wheel", Oe = w && (this.config.show_color_slider === !0 || this.config.show_color_picker === !0 && Be) && fe && (!st || r), ze = w && this.config.show_color_picker === !0 && !Be && fe && (!Le || r), H = e.state !== "unavailable" && e.state !== "unknown", Ie = C && H && v && e.attributes?.current_position !== void 0, ge = h && H && r && v && e.attributes?.percentage !== void 0, me = x && H && r && v && (e.attributes?.humidity !== void 0 || e.attributes?.target_humidity !== void 0), Z = T && H && r && v && e.attributes?.volume_level !== void 0, be = F && H && v, ve = he && H && r && v && (e.attributes?.temperature !== void 0 || e.attributes?.target_temp_high !== void 0), ct = (this.config.bg_opacity ?? 10) / 100, dt = this.config.slider_color ? `--slider-color: ${this._resolveColor(this.config.slider_color)};` : u && r && !this.config.use_light_color ? "--slider-color: rgba(255, 255, 255, 0.95);" : `--slider-color: ${f};`, ne = this.config.slider_track_color ? `--slider-track-color: ${this._resolveColor(this.config.slider_track_color)};` : u && r ? "--slider-track-color: rgba(0, 0, 0, 0.25);" : "", P = this._calculateMultiStageFade(e, c, y), G = this.config.fade_target ?? "card", Ue = this._resolveColor(this.config.bg_color);
+    let D;
+    P.activeFade && (G === "card" || G === "all" || u) ? D = P.currentColor : u ? n === "light" ? D = r ? d || f : this.config.inactive_color ? y : "#000000" : D = r ? f : y : Ue ? D = Ue : n === "light" && !r ? D = "#000000" : D = `rgba(150, 150, 150, ${ct})`;
     let ye = p;
     P.activeFade && (G === "icon" || G === "all") && (ye = u ? "transparent" : P.currentColor);
     let ae = this._resolveColor(this.config.active_color) || (n === "light" && d ? d : f) || "var(--primary-color)";
@@ -2895,7 +2901,7 @@ let U = class extends ce {
     this.config.font_weight_primary;
     let W = "";
     this.config.text_color_mode === "active_accent" && r ? W += `--primary-text-color: ${f}; ` : this.config.text_color_primary ? W += `--primary-text-color: ${this._resolveColor(this.config.text_color_primary)}; ` : u && r && (W += "--primary-text-color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.4); "), this.config.text_color_secondary ? W += `--secondary-text-color: ${this._resolveColor(this.config.text_color_secondary)}; ` : u && r && (W += "--secondary-text-color: rgba(255, 255, 255, 0.9); text-shadow: 0 1px 2px rgba(0,0,0,0.3); ");
-    const D = this.config.features_position === "inline", O = this._iconSize, Xe = this._iconContainerSize, ut = this.config.text_scrolling_primary || "none", Ke = this.config.text_scrolling_secondary || "none", A = $`
+    const B = this.config.features_position === "inline", O = this._iconSize, Xe = this._iconContainerSize, ut = this.config.text_scrolling_primary || "none", Ke = this.config.text_scrolling_secondary || "none", A = $`
       ${He ? this._renderLightSlider(e) : b}
       ${Ie ? this._renderCoverSlider(e) : b}
       ${ge ? this._renderFanSlider(e) : b}
@@ -2904,17 +2910,16 @@ let U = class extends ce {
       ${be ? this._renderNumberSlider(e) : b}
       ${ve ? this._renderClimateSlider(e) : b}
     `, V = $`
-      ${Be ? this._renderColorTempSlider(e) : b}
+      ${De ? this._renderColorTempSlider(e) : b}
       ${Oe ? this._renderColorSlider(e) : b}
       ${ze ? this._renderColorPicker(e) : b}
-    `, Y = He || Ie || ge || me || Z || be || ve, q = Be || Oe || ze, $e = !D && q || xe.length > 0, z = this.config.decay_slider_position ?? "bottom";
+    `, Y = He || Ie || ge || me || Z || be || ve, q = De || Oe || ze, $e = !B && q || xe.length > 0, z = this.config.decay_slider_position ?? "bottom";
     return $`
       ${this.config.custom_styles ? $`<style>${this.config.custom_styles}</style>` : b}
       <ha-card 
-        tabindex="0"
         class="${qe}" 
         ?active=${r}
-        style="${this._staticCardStyles} background: ${B}; ${Q} ${dt} ${ne} ${W} --ag-glow-color: ${ae}; --ag-active-color: ${f};"
+        style="${this._staticCardStyles} background: ${D}; ${Q} ${dt} ${ne} ${W} --ag-glow-color: ${ae}; --ag-active-color: ${f};"
         @click=${this._handleTap}
         @keydown=${this._handleKeyDown}
         @contextmenu=${this._handleContextMenu}
@@ -2923,7 +2928,7 @@ let U = class extends ce {
         @pointerup=${this._handlePointerUp}
         @pointercancel=${this._handlePointerCancel}
       >
-        <div class="card-content ${D ? "features-inline" : ""}" style="justify-content: var(--ag-content-alignment);">
+        <div class="card-content ${B ? "features-inline" : ""}" style="justify-content: var(--ag-content-alignment);">
           ${z === "top" ? this._renderDecaySlider(P) : b}
 
           <div class="info-container">
@@ -2955,20 +2960,20 @@ let U = class extends ce {
                 </div>` : b}
             </div>
             ${z === "inline" ? $`<div class="inline-sliders">${this._renderDecaySlider(P)}</div>` : b}
-            ${D && Y ? $`<div class="inline-sliders" style="${this._mainSliderMarginOffsets}">${A}</div>` : b}
-            ${D && q ? $`<div class="inline-sliders ${this._collapsed ? "collapsed" : ""}">${V}</div>` : b}
+            ${B && Y ? $`<div class="inline-sliders" style="${this._mainSliderMarginOffsets}">${A}</div>` : b}
+            ${B && q ? $`<div class="inline-sliders ${this._collapsed ? "collapsed" : ""}">${V}</div>` : b}
           </div>
           
           ${z === "bottom" ? this._renderDecaySlider(P) : b}
-          ${!D && Y ? $`<div class="features-container" style="${this._featuresOffsetStyle} ${this._mainSliderMarginOffsets}">${A}</div>` : b}
+          ${!B && Y ? $`<div class="features-container" style="${this._featuresOffsetStyle} ${this._mainSliderMarginOffsets}">${A}</div>` : b}
 
           ${$e ? $`
             <div class="collapsible-wrapper ${this._collapsed ? "collapsed" : ""}">
-              ${!D && q ? $`<div class="features-container" style="${this._featuresOffsetStyle}">${V}</div>` : b}
+              ${!B && q ? $`<div class="features-container" style="${this._featuresOffsetStyle}">${V}</div>` : b}
 
               ${xe.length > 0 ? $`
                 <div class="sub-buttons-container">
-                  ${Di(
+                  ${Bi(
       xe,
       (M) => M.key,
       (M) => this._renderSubButton(M.entity || "", M.icon, M.color, M.bg !== !1, M.name, M.tapAction, M.holdAction, M.type, M.doubleTapAction, M.showState)

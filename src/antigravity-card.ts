@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "121";
+export const CARD_VERSION = "122";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -717,6 +717,8 @@ export class AntigravityWithIconCard extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this._mountTime = Date.now();
+    this._pointerDownReceived = false;
     // Visibility is handled by updated() — no need to call here
     this._setupRelativeTimer();
     this._setupIntersectionObserver();
@@ -1228,6 +1230,8 @@ export class AntigravityWithIconCard extends LitElement {
 
   // --- NATIVE ACTION ROUTING & TOUCH GESTURE HANDLING ---
 
+  private _mountTime = 0;
+  private _pointerDownReceived = false;
   private _canceled = false;
   // _pointerDownTime: reserved for future gesture duration checks
 
@@ -1318,6 +1322,15 @@ export class AntigravityWithIconCard extends LitElement {
   private _handleTap(e: Event) {
     e.stopPropagation();
     if (this._isSubElement(e)) return;
+    if (Date.now() - this._mountTime < 650) {
+      // Ignore startup ghost clicks from Android home screen app launch
+      this._pointerDownReceived = false;
+      return;
+    }
+    if (!this._pointerDownReceived && e instanceof MouseEvent && (e as any).pointerType !== 'mouse') {
+      return;
+    }
+    this._pointerDownReceived = false;
     if (this._moved || this._canceled) {
       this._moved = false;
       this._canceled = false;
@@ -1363,6 +1376,7 @@ export class AntigravityWithIconCard extends LitElement {
 
   private _handleKeyDown(e: KeyboardEvent) {
     if (this._isSubElement(e)) return;
+    if (Date.now() - this._mountTime < 1000) return;
 
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -1374,7 +1388,7 @@ export class AntigravityWithIconCard extends LitElement {
   private _handleContextMenu(e: Event) {
     e.preventDefault();
     e.stopPropagation();
-    if (this._held) return;
+    if (Date.now() - this._mountTime < 650 || this._held) return;
     safeForwardHaptic('medium', this.config.haptic_feedback !== false);
     const trigger = this.config.collapse_controls_trigger || 'hold';
     if (trigger === 'hold' && this._hasCollapsible()) {
@@ -1386,10 +1400,13 @@ export class AntigravityWithIconCard extends LitElement {
 
   private _handlePointerDown(e: PointerEvent) {
     if (this._isSubElement(e)) return;
+    if (Date.now() - this._mountTime < 650) {
+      return;
+    }
+    this._pointerDownReceived = true;
     this._held = false;
     this._moved = false;
     this._canceled = false;
-    // Reserved: this._pointerDownTime = Date.now();
     this._startX = e.clientX;
     this._startY = e.clientY;
     this._holdTimer = setTimeout(() => {
@@ -2096,7 +2113,6 @@ export class AntigravityWithIconCard extends LitElement {
     return html`
       ${this.config.custom_styles ? html`<style>${this.config.custom_styles}</style>` : nothing}
       <ha-card 
-        tabindex="0"
         class="${cardClasses}" 
         ?active=${isActive}
         style="${this._staticCardStyles} background: ${rawBgStyle}; ${shadowStyle} ${sliderColor} ${sliderTrackColor} ${overrideTextVars} --ag-glow-color: ${effectiveGlowColor}; --ag-active-color: ${activeColor};"
