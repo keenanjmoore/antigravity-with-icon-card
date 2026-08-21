@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "119";
+export const CARD_VERSION = "120";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -511,7 +511,7 @@ export class AntigravityWithIconCard extends LitElement {
       `layout-${this.config.layout}`,
       this.config.card_layout === 'large' ? 'card-large' : '',
       `theme-${this.config.theme_preset ?? 'default'}`,
-      `hover-${this.config.hover_effect ?? 'none'}`,
+      `hover-${this.config.hover_effect ?? 'glow'}`,
       `slider-style-${this.config.slider_style ?? 'circle'}`,
       this.config.text_color_mode === 'inverse' ? 'text-color-mode-inverse' : ''
     ].filter(Boolean).join(' ');

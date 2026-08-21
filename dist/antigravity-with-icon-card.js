@@ -1837,7 +1837,7 @@ var oo = Object.defineProperty, ro = Object.getOwnPropertyDescriptor, re = (t, e
     (a = t[n]) && (r = (o ? a(e, i, r) : a(r)) || r);
   return o && r && oo(e, i, r), r;
 };
-const no = "119";
+const no = "120";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${no} `,
   "color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;",
@@ -2203,7 +2203,7 @@ let U = class extends ce {
       `layout-${this.config.layout}`,
       this.config.card_layout === "large" ? "card-large" : "",
       `theme-${this.config.theme_preset ?? "default"}`,
-      `hover-${this.config.hover_effect ?? "none"}`,
+      `hover-${this.config.hover_effect ?? "glow"}`,
       `slider-style-${this.config.slider_style ?? "circle"}`,
       this.config.text_color_mode === "inverse" ? "text-color-mode-inverse" : ""
     ].filter(Boolean).join(" ");
