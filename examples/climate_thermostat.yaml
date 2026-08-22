@@ -1,0 +1,32 @@
+# Climate Thermostat with Target Temp Slider and Mode Sub-Buttons
+type: custom:antigravity-card
+entity: climate.living_room
+name: Thermostat
+primary_info: name
+secondary_info: temperature
+theme_preset: aurora
+
+# Primary Temperature Slider
+show_slider: true
+slider_style: filled
+slider_height: 40
+
+# HVAC Action & Mode Sub-Buttons
+features_position: bottom
+features_columns: 4
+
+sub_button_1_type: temp_up
+sub_button_1_label: "+1°"
+sub_button_1_show_background: true
+
+sub_button_2_type: temp_down
+sub_button_2_label: "-1°"
+sub_button_2_show_background: true
+
+sub_button_3_type: climate_mode
+sub_button_3_label: Mode
+sub_button_3_show_background: true
+
+sub_button_4_type: fan_mode
+sub_button_4_label: Fan
+sub_button_4_show_background: true

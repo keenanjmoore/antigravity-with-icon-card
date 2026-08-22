@@ -1,0 +1,38 @@
+# Dimmable Light with Brightness, Color Temp, and Sub-Buttons
+type: custom:antigravity-card
+entity: light.kitchen_island
+name: Kitchen Island
+primary_info: name
+secondary_info: brightness
+theme_preset: cyberpunk
+
+# Main Brightness Slider
+show_slider: true
+slider_style: google
+slider_height: 38
+tap_slider_to_toggle: true
+
+# Color Temperature Slider
+show_color_temp: true
+color_temp_type: gradient
+color_temp_height: 32
+
+# Sub-Buttons for Quick Kelvin Presets
+features_position: bottom
+features_columns: 4
+
+sub_button_1_type: temp_warm
+sub_button_1_label: 2700K
+sub_button_1_show_background: true
+
+sub_button_2_type: white_mode
+sub_button_2_label: 4000K
+sub_button_2_show_background: true
+
+sub_button_3_type: temp_cool
+sub_button_3_label: 6000K
+sub_button_3_show_background: true
+
+sub_button_4_type: brightness
+sub_button_4_label: 50%
+sub_button_4_show_background: true

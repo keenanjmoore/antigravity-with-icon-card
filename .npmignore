@@ -1,0 +1,8 @@
+src/
+backups/
+docs/
+examples/
+.github/
+tsconfig.json
+vite.config.ts
+*.log

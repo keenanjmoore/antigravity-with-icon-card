@@ -1,0 +1,31 @@
+# Motion Sensor with 3-Stage Physical-Time Color Decay
+type: custom:antigravity-card
+entity: binary_sensor.living_room_motion
+name: Living Room Motion
+primary_info: name
+secondary_info: last-changed
+color_type: card
+theme_preset: glassmorphism
+
+# Multi-Stage Fade Configuration
+fade_transition_enabled: true
+fade_trigger: on_inactive
+show_decay_slider: true
+decay_slider_position: bottom
+decay_slider_height: 8
+
+# Stage 1: Quick Amber Warning (1 min)
+fade_stage_1_duration: 60
+fade_stage_1_pickup: true
+fade_stage_1_color: "#ff9800"
+
+# Stage 2: Mid-range Lime Cooldown (10 min)
+fade_stage_2_duration: 600
+fade_stage_2_pickup: true
+fade_stage_2_color: "#cddc39"
+
+# Stage 3: Long Green Resting (30 min)
+fade_stage_3_duration: 1800
+fade_stage_3_pickup: true
+fade_stage_3_color: "#4caf50"
+fade_smooth_retrigger: true
