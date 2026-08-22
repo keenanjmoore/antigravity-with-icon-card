@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "131";
+export const CARD_VERSION = "132";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -3084,6 +3084,54 @@ export class AntigravityWithIconCard extends LitElement {
           };
           break;
         }
+        case 'tts_announce': {
+          if (!subIcon) subIcon = 'mdi:bullhorn-variant-outline';
+          subTitle = 'Voice Announcement';
+          defaultAction = () => {
+            this.hass?.callService('tts', 'speak', { media_player_entity_id: entityId || this.config.entity, message: 'Attention: Test announcement' }).catch(() => {
+              this.hass?.callService('tts', 'google_translate_say', { entity_id: entityId || this.config.entity, message: 'Attention: Test announcement' });
+            });
+          };
+          break;
+        }
+        case 'media_zone': {
+          if (!subIcon) subIcon = 'mdi:speaker-multiple';
+          subTitle = 'Group Speakers / Zone';
+          defaultAction = () => {
+            this.hass?.callService('media_player', 'join', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
+        case 'media_preset': {
+          if (!subIcon) subIcon = 'mdi:radio-tower';
+          subTitle = 'Play Radio Stream / Preset';
+          defaultAction = () => {
+            this.hass?.callService('media_player', 'play_media', {
+              entity_id: entityId || this.config.entity,
+              media_content_id: 'http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one',
+              media_content_type: 'music'
+            });
+          };
+          break;
+        }
+        case 'door_hold': {
+          if (!subIcon) subIcon = 'mdi:door-open';
+          subTitle = 'Hold Gate / Door Open';
+          defaultAction = () => {
+            this.hass?.callService('cover', 'open_cover', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
+        case 'aux_heat': {
+          const isAux = stateObj?.attributes?.aux_heat === 'on' || stateObj?.attributes?.aux_heat === true;
+          subIsActive = isAux;
+          if (!subIcon) subIcon = isAux ? 'mdi:radiator' : 'mdi:radiator-disabled';
+          subTitle = isAux ? 'Disable Aux Heat' : 'Enable Aux Heat';
+          defaultAction = () => {
+            this.hass?.callService('climate', 'set_aux_heat', { entity_id: entityId || this.config.entity, aux_heat: !isAux });
+          };
+          break;
+        }
         case 'cover_preset': {
           if (!subIcon) subIcon = 'mdi:window-shutter';
           subTitle = 'Go to Shading Position (50%)';
@@ -3314,6 +3362,56 @@ export class AntigravityWithIconCard extends LitElement {
           };
           break;
         }
+        case 'clean_zone': {
+          if (!subIcon) subIcon = 'mdi:map-marker-radius-outline';
+          subTitle = 'Zone / Room Clean';
+          defaultAction = () => {
+            this.hass?.callService('vacuum', 'clean_spot', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
+        case 'spot_clean': {
+          if (!subIcon) subIcon = 'mdi:target-variant';
+          subTitle = 'Spot Clean Mode';
+          defaultAction = () => {
+            this.hass?.callService('vacuum', 'clean_spot', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
+        case 'alarm_keypad': {
+          if (!subIcon) subIcon = 'mdi:dialpad';
+          subTitle = 'Open PIN Keypad';
+          defaultAction = () => {
+            this._dispatchAction('tap', { action: 'more-info' }, entityId || this.config.entity);
+          };
+          break;
+        }
+        case 'valve_close': {
+          const isClosed = stateObj?.state === 'closed' || stateObj?.state === 'off';
+          subIsActive = !isClosed;
+          if (!subIcon) subIcon = isClosed ? 'mdi:valve-closed' : 'mdi:valve-open';
+          subTitle = isClosed ? 'Valve is Closed' : 'Emergency Close Valve';
+          defaultAction = () => {
+            const vDomain = (entityId || this.config.entity || '').split('.')[0];
+            if (vDomain === 'valve') {
+              this.hass?.callService('valve', 'close_valve', { entity_id: entityId || this.config.entity });
+            } else {
+              this.hass?.callService('switch', 'turn_off', { entity_id: entityId || this.config.entity });
+            }
+          };
+          break;
+        }
+        case 'pool_speed': {
+          const curSpeedPct = stateObj?.attributes?.percentage ?? 50;
+          const nextSpeedPct = curSpeedPct > 50 ? 30 : 100;
+          if (!subIcon) subIcon = 'mdi:pool';
+          subTitle = `Pool Speed: ${curSpeedPct}% -> ${nextSpeedPct}%`;
+          if (!subLabel) subLabel = `${curSpeedPct}%`;
+          defaultAction = () => {
+            this.hass?.callService('fan', 'set_percentage', { entity_id: entityId || this.config.entity, percentage: nextSpeedPct });
+          };
+          break;
+        }
         case 'vacuum_fan_speed': {
           const curSpeed = stateObj?.attributes?.fan_speed || 'standard';
           const speeds: string[] = stateObj?.attributes?.fan_speed_list || ['quiet', 'standard', 'strong', 'turbo'];
@@ -3376,6 +3474,44 @@ export class AntigravityWithIconCard extends LitElement {
             if (effects.length > 0) {
               this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, effect: nextEffect });
             }
+          };
+          break;
+        }
+        case 'effect_next': {
+          const effects: string[] = stateObj?.attributes?.effect_list || [];
+          const curEffect = stateObj?.attributes?.effect || 'None';
+          const nextEffect = effects.length > 0 ? (effects[(effects.indexOf(curEffect) + 1) % effects.length] || effects[0]) : 'None';
+          if (!subIcon) subIcon = 'mdi:arrow-right-bold-circle-outline';
+          subTitle = `Next Effect: ${nextEffect}`;
+          if (!subLabel) subLabel = nextEffect;
+          defaultAction = () => {
+            if (effects.length > 0) {
+              this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, effect: nextEffect });
+            }
+          };
+          break;
+        }
+        case 'effect_prev': {
+          const effects: string[] = stateObj?.attributes?.effect_list || [];
+          const curEffect = stateObj?.attributes?.effect || 'None';
+          const curIdx = effects.indexOf(curEffect);
+          const prevIdx = curIdx <= 0 ? effects.length - 1 : curIdx - 1;
+          const prevEffect = effects.length > 0 ? effects[prevIdx] : 'None';
+          if (!subIcon) subIcon = 'mdi:arrow-left-bold-circle-outline';
+          subTitle = `Previous Effect: ${prevEffect}`;
+          if (!subLabel) subLabel = prevEffect;
+          defaultAction = () => {
+            if (effects.length > 0) {
+              this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, effect: prevEffect });
+            }
+          };
+          break;
+        }
+        case 'white_mode': {
+          if (!subIcon) subIcon = 'mdi:white-balance-sunny';
+          subTitle = 'Set Neutral White (4000K)';
+          defaultAction = () => {
+            this.hass?.callService('light', 'turn_on', { entity_id: entityId || this.config.entity, color_temp: 250 });
           };
           break;
         }
@@ -3476,6 +3612,28 @@ export class AntigravityWithIconCard extends LitElement {
           if (!subIcon) subIcon = 'mdi:water-minus';
           subTitle = `Humidity -5% (${nextH}%)`;
           if (!subLabel) subLabel = '-5%';
+          defaultAction = () => {
+            this.hass?.callService('humidifier', 'set_humidity', { entity_id: entityId || this.config.entity, humidity: nextH });
+          };
+          break;
+        }
+        case 'humidity_step_up': {
+          const curH = Number(stateObj?.attributes?.humidity ?? stateObj?.attributes?.target_humidity ?? 50);
+          const nextH = Math.min(100, curH + 1);
+          if (!subIcon) subIcon = 'mdi:water-plus';
+          subTitle = `Humidity +1% (${nextH}%)`;
+          if (!subLabel) subLabel = '+1%';
+          defaultAction = () => {
+            this.hass?.callService('humidifier', 'set_humidity', { entity_id: entityId || this.config.entity, humidity: nextH });
+          };
+          break;
+        }
+        case 'humidity_step_down': {
+          const curH = Number(stateObj?.attributes?.humidity ?? stateObj?.attributes?.target_humidity ?? 50);
+          const nextH = Math.max(0, curH - 1);
+          if (!subIcon) subIcon = 'mdi:water-minus';
+          subTitle = `Humidity -1% (${nextH}%)`;
+          if (!subLabel) subLabel = '-1%';
           defaultAction = () => {
             this.hass?.callService('humidifier', 'set_humidity', { entity_id: entityId || this.config.entity, humidity: nextH });
           };
@@ -3650,6 +3808,13 @@ export class AntigravityWithIconCard extends LitElement {
         background-image: linear-gradient(var(--card-background-color, #1e1e1e), var(--card-background-color, #1e1e1e)), linear-gradient(135deg, #6200ea, #00e5ff, #76ff03) !important;
         background-origin: border-box !important;
         background-clip: padding-box, border-box !important;
+      }
+      .glass-specular-edge {
+        box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.28), 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+      }
+      .card-chip .card-content {
+        min-height: 32px !important;
+        padding: 4px 8px !important;
       }
       .color-swatch-chip[active] {
         outline: 2px solid #ffffff;
