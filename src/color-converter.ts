@@ -17,7 +17,7 @@ class ColorConverterService {
    * Parse any CSS color string into an [r, g, b] integer tuple.
    * Uses a true LRU cache with access timestamp tracking.
    */
-  public parseColorToRgb(colorStr: string): RGBTuple | null {
+  public parseColorToRgb(colorStr: string | undefined): RGBTuple | null {
     if (!colorStr || typeof colorStr !== 'string') return null;
     const trimmed = colorStr.trim();
     if (!trimmed) return null;
@@ -201,6 +201,29 @@ class ColorConverterService {
       Math.round(a[2] + (b[2] - a[2]) * f),
     ];
   }
+  /**
+   * Convert HS values (h: 0-360, s: 0-100) to an RGB tuple.
+   */
+  public hsToRgb(h: number, s: number): RGBTuple {
+    h = ((h % 360) + 360) % 360 / 360;
+    s = Math.max(0, Math.min(100, s)) / 100;
+    const v = 1;
+    const i = Math.floor(h * 6);
+    const f = h * 6 - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+    let r = 0, g = 0, b = 0;
+    switch (i % 6) {
+      case 0: r = v; g = t; b = p; break;
+      case 1: r = q; g = v; b = p; break;
+      case 2: r = p; g = v; b = t; break;
+      case 3: r = p; g = q; b = v; break;
+      case 4: r = t; g = p; b = v; break;
+      case 5: r = v; g = p; b = q; break;
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  }
 }
 
 export const colorConverter = new ColorConverterService();
@@ -208,5 +231,28 @@ export const parseColorToRgb = colorConverter.parseColorToRgb.bind(colorConverte
 export const rgbToHex = colorConverter.rgbToHex.bind(colorConverter);
 export const rgbToHue = colorConverter.rgbToHue.bind(colorConverter);
 export const hsvToRgb = colorConverter.hsvToRgb.bind(colorConverter);
+export const hsToRgb = colorConverter.hsToRgb.bind(colorConverter);
 export const kelvinToRgb = colorConverter.kelvinToRgb.bind(colorConverter);
 export const lerpRgb = colorConverter.lerpRgb.bind(colorConverter);
+
+export const COLOR_SWATCHES = [
+  { hex: '#f44336', label: 'Red', rgb: [244, 67, 54] as RGBTuple },
+  { hex: '#ff9800', label: 'Orange', rgb: [255, 152, 0] as RGBTuple },
+  { hex: '#ffeb3b', label: 'Yellow', rgb: [255, 235, 59] as RGBTuple },
+  { hex: '#4caf50', label: 'Green', rgb: [76, 175, 80] as RGBTuple },
+  { hex: '#00bcd4', label: 'Cyan', rgb: [0, 188, 212] as RGBTuple },
+  { hex: '#2196f3', label: 'Blue', rgb: [33, 150, 243] as RGBTuple },
+  { hex: '#9c27b0', label: 'Purple', rgb: [156, 39, 176] as RGBTuple },
+  { hex: '#e91e63', label: 'Pink', rgb: [233, 30, 99] as RGBTuple },
+  { hex: '#ffffff', label: 'White', rgb: [255, 255, 255] as RGBTuple },
+  { hex: '#ffe0b2', label: 'Warm', rgb: [255, 224, 178] as RGBTuple },
+];
+
+export const COLOR_TEMP_PRESETS = [
+  { k: 2200, label: '2200K', rgb: kelvinToRgb(2200) },
+  { k: 2700, label: '2700K', rgb: kelvinToRgb(2700) },
+  { k: 3000, label: '3000K', rgb: kelvinToRgb(3000) },
+  { k: 4000, label: '4000K', rgb: kelvinToRgb(4000) },
+  { k: 5000, label: '5000K', rgb: kelvinToRgb(5000) },
+  { k: 6500, label: '6500K', rgb: kelvinToRgb(6500) },
+];
