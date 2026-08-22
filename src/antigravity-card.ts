@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "129";
+export const CARD_VERSION = "130";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -2274,7 +2274,9 @@ export class AntigravityWithIconCard extends LitElement {
     const isDoorSensor = domain === 'binary_sensor' && (devClass === 'door' || devClass === 'window' || devClass === 'garage_door' || devClass === 'opening');
     const motionActiveClass = isMotionSensor && (isActive || (multiStageFade.activeFade && multiStageFade.currentStage === 1)) ? 'motion-active' : '';
     const doorOpenClass = isDoorSensor && isActive ? 'door-open' : '';
-    const cardClasses = `${this._staticCardClasses} ${activeGlowClass} ${motionActiveClass} ${doorOpenClass}`;
+    const hvacClass = domain === 'climate' && stateObj?.attributes?.hvac_action ? `hvac-${stateObj.attributes.hvac_action}` : '';
+    const coverMotionClass = domain === 'cover' ? (stateObj?.state === 'opening' ? 'cover-opening' : (stateObj?.state === 'closing' ? 'cover-closing' : '')) : '';
+    const cardClasses = `${this._staticCardClasses} ${activeGlowClass} ${motionActiveClass} ${doorOpenClass} ${hvacClass} ${coverMotionClass}`;
 
     const subButtons = this._getSubButtons();
 
@@ -2967,6 +2969,62 @@ export class AntigravityWithIconCard extends LitElement {
           };
           break;
         }
+        case 'vol_up': {
+          if (!subIcon) subIcon = 'mdi:volume-plus';
+          subTitle = 'Volume +5%';
+          if (!subLabel) subLabel = '+5%';
+          defaultAction = () => {
+            this.hass?.callService('media_player', 'volume_up', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
+        case 'vol_down': {
+          if (!subIcon) subIcon = 'mdi:volume-minus';
+          subTitle = 'Volume -5%';
+          if (!subLabel) subLabel = '-5%';
+          defaultAction = () => {
+            this.hass?.callService('media_player', 'volume_down', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
+        case 'mute': {
+          const isMuted = stateObj?.attributes?.is_volume_muted === true;
+          subIsActive = isMuted;
+          if (!subIcon) subIcon = isMuted ? 'mdi:volume-off' : 'mdi:volume-high';
+          subTitle = isMuted ? 'Unmute' : 'Mute';
+          defaultAction = () => {
+            this.hass?.callService('media_player', 'volume_mute', { entity_id: entityId || this.config.entity, is_volume_muted: !isMuted });
+          };
+          break;
+        }
+        case 'source': {
+          const curSource = stateObj?.attributes?.source || '';
+          const sources: string[] = stateObj?.attributes?.source_list || [];
+          const nextSource = sources.length > 0 ? (sources[(sources.indexOf(curSource) + 1) % sources.length] || sources[0]) : curSource;
+          if (!subIcon) subIcon = 'mdi:import';
+          subTitle = `Source: ${curSource} -> ${nextSource}`;
+          if (!subLabel) subLabel = curSource || 'Source';
+          defaultAction = () => {
+            if (nextSource) {
+              this.hass?.callService('media_player', 'select_source', { entity_id: entityId || this.config.entity, source: nextSource });
+            }
+          };
+          break;
+        }
+        case 'sound_mode': {
+          const curMode = stateObj?.attributes?.sound_mode || '';
+          const modes: string[] = stateObj?.attributes?.sound_mode_list || [];
+          const nextMode = modes.length > 0 ? (modes[(modes.indexOf(curMode) + 1) % modes.length] || modes[0]) : curMode;
+          if (!subIcon) subIcon = 'mdi:surround-sound';
+          subTitle = `Sound: ${curMode} -> ${nextMode}`;
+          if (!subLabel) subLabel = curMode || 'Sound';
+          defaultAction = () => {
+            if (nextMode) {
+              this.hass?.callService('media_player', 'select_sound_mode', { entity_id: entityId || this.config.entity, sound_mode: nextMode });
+            }
+          };
+          break;
+        }
         case 'open_close': {
           const isDoorOpen = stateObj?.state === 'open' || stateObj?.state === 'on' || (stateObj?.attributes?.current_position !== undefined && stateObj.attributes.current_position > 0);
           subIsActive = isDoorOpen;
@@ -3073,6 +3131,24 @@ export class AntigravityWithIconCard extends LitElement {
           };
           break;
         }
+        case 'climate_preset': {
+          const curPreset = stateObj?.attributes?.preset_mode || 'none';
+          const presets: string[] = stateObj?.attributes?.preset_modes || ['eco', 'comfort', 'boost', 'away', 'sleep', 'none'];
+          const nextPreset = presets[(presets.indexOf(curPreset) + 1) % presets.length] || 'none';
+          if (!subIcon) {
+            if (curPreset === 'eco') subIcon = 'mdi:leaf';
+            else if (curPreset === 'boost') subIcon = 'mdi:rocket-launch';
+            else if (curPreset === 'away') subIcon = 'mdi:home-export-outline';
+            else if (curPreset === 'sleep') subIcon = 'mdi:bed';
+            else subIcon = 'mdi:thermostat';
+          }
+          subTitle = `Preset: ${curPreset} -> ${nextPreset}`;
+          if (!subLabel) subLabel = curPreset;
+          defaultAction = () => {
+            this.hass?.callService('climate', 'set_preset_mode', { entity_id: entityId || this.config.entity, preset_mode: nextPreset });
+          };
+          break;
+        }
         case 'clean': {
           const isCleaning = stateObj?.state === 'cleaning';
           subIsActive = isCleaning;
@@ -3096,6 +3172,36 @@ export class AntigravityWithIconCard extends LitElement {
           subTitle = 'Locate';
           defaultAction = () => {
             this.hass?.callService('vacuum', 'locate', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
+        case 'vacuum_fan_speed': {
+          const curSpeed = stateObj?.attributes?.fan_speed || 'standard';
+          const speeds: string[] = stateObj?.attributes?.fan_speed_list || ['quiet', 'standard', 'strong', 'turbo'];
+          const nextSpeed = speeds[(speeds.indexOf(curSpeed) + 1) % speeds.length] || 'standard';
+          if (!subIcon) subIcon = 'mdi:fan';
+          subTitle = `Suction: ${curSpeed} -> ${nextSpeed}`;
+          if (!subLabel) subLabel = curSpeed;
+          defaultAction = () => {
+            this.hass?.callService('vacuum', 'set_fan_speed', { entity_id: entityId || this.config.entity, fan_speed: nextSpeed });
+          };
+          break;
+        }
+        case 'counter_inc': {
+          if (!subIcon) subIcon = 'mdi:plus-box';
+          subTitle = 'Increment Counter (+1)';
+          if (!subLabel) subLabel = '+1';
+          defaultAction = () => {
+            this.hass?.callService('counter', 'increment', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
+        case 'counter_dec': {
+          if (!subIcon) subIcon = 'mdi:minus-box';
+          subTitle = 'Decrement Counter (-1)';
+          if (!subLabel) subLabel = '-1';
+          defaultAction = () => {
+            this.hass?.callService('counter', 'decrement', { entity_id: entityId || this.config.entity });
           };
           break;
         }
@@ -3711,6 +3817,7 @@ export class AntigravityWithIconCard extends LitElement {
         overflow: hidden;
         text-overflow: ellipsis;
         width: 100%;
+        font-size: clamp(12px, 2.8vw, var(--ag-primary-font-size, 14px));
         pointer-events: none;
       }
       .secondary {
@@ -3721,7 +3828,31 @@ export class AntigravityWithIconCard extends LitElement {
         overflow: hidden;
         text-overflow: ellipsis;
         width: 100%;
+        font-size: clamp(11px, 2.5vw, var(--ag-secondary-font-size, 15px));
         pointer-events: none;
+      }
+      .hvac-heating {
+        box-shadow: 0 0 16px rgba(255, 112, 67, 0.45) !important;
+      }
+      .hvac-cooling {
+        box-shadow: 0 0 16px rgba(41, 182, 246, 0.45) !important;
+      }
+      .hvac-drying {
+        box-shadow: 0 0 16px rgba(171, 71, 188, 0.45) !important;
+      }
+      .cover-opening ha-icon {
+        animation: ag-bounce-up 1s infinite alternate ease-in-out;
+      }
+      .cover-closing ha-icon {
+        animation: ag-bounce-down 1s infinite alternate ease-in-out;
+      }
+      @keyframes ag-bounce-up {
+        from { transform: translateY(0); }
+        to { transform: translateY(-3px); }
+      }
+      @keyframes ag-bounce-down {
+        from { transform: translateY(0); }
+        to { transform: translateY(3px); }
       }
 
       /* Bounce / Ping-Pong Marquee Animation */
