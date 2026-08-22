@@ -2290,12 +2290,12 @@ export class AntigravityWithIconCard extends LitElement {
 
     const showLightSlider = isLight && hasControls && supportsBrightness && (!hideSliderWhenOff || isActive);
     const colorTempAttr = stateObj.attributes?.color_temp_kelvin ?? stateObj.attributes?.color_temp;
-    const showColorTemp = isLight && this.config.show_color_temp === true && (colorTempAttr !== undefined || supportsColorTemp) && (!hideColorTempWhenOff || isActive);
+    const showColorTemp = isLight && hasControls && this.config.show_color_temp === true && (colorTempAttr !== undefined || supportsColorTemp) && (!hideColorTempWhenOff || isActive);
     
     // RGB / Hue / XY Color Mode Support
     const isSliderColorPicker = this.config.color_picker_type !== 'wheel';
-    const showColorSlider = isLight && (this.config.show_color_slider === true || (this.config.show_color_picker === true && isSliderColorPicker)) && supportsColor && (!hideColorSliderWhenOff || isActive);
-    const showColorWheel = isLight && this.config.show_color_picker === true && !isSliderColorPicker && supportsColor && (!hideColorPickerWhenOff || isActive);
+    const showColorSlider = isLight && hasControls && (this.config.show_color_slider === true || (this.config.show_color_picker === true && isSliderColorPicker)) && supportsColor && (!hideColorSliderWhenOff || isActive);
+    const showColorWheel = isLight && hasControls && this.config.show_color_picker === true && !isSliderColorPicker && supportsColor && (!hideColorPickerWhenOff || isActive);
 
     // Cover Features
     const isAvailable = stateObj.state !== 'unavailable' && stateObj.state !== 'unknown';
