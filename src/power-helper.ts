@@ -10,10 +10,13 @@ export interface BatteryState {
   dischargingTime: number;
 }
 
-class PowerHelperService {
+export class PowerHelperService {
   private _battery: any = null;
   private _isLowPower = false;
   private _listeners: Set<() => void> = new Set();
+  private _onChargingChange: (() => void) | null = null;
+  private _onLevelChange: (() => void) | null = null;
+  private _onConnectionChange: (() => void) | null = null;
 
   constructor() {
     this._initBattery();
@@ -26,14 +29,17 @@ class PowerHelperService {
         this._battery = await (navigator as any).getBattery();
         this._updatePowerState();
 
-        this._battery.addEventListener('chargingchange', () => {
+        this._onChargingChange = () => {
           this._updatePowerState();
           this._notifyListeners();
-        });
-        this._battery.addEventListener('levelchange', () => {
+        };
+        this._onLevelChange = () => {
           this._updatePowerState();
           this._notifyListeners();
-        });
+        };
+
+        this._battery.addEventListener('chargingchange', this._onChargingChange);
+        this._battery.addEventListener('levelchange', this._onLevelChange);
       } catch {
         // Battery API restricted or unavailable
       }
@@ -46,12 +52,13 @@ class PowerHelperService {
       if (conn.saveData) {
         this._isLowPower = true;
       }
-      conn.addEventListener?.('change', () => {
+      this._onConnectionChange = () => {
         if (conn.saveData) {
           this._isLowPower = true;
           this._notifyListeners();
         }
-      });
+      };
+      conn.addEventListener?.('change', this._onConnectionChange);
     }
   }
 
@@ -66,6 +73,10 @@ class PowerHelperService {
   public addChangeListener(listener: () => void): () => void {
     this._listeners.add(listener);
     return () => this._listeners.delete(listener);
+  }
+
+  public get listenerCount(): number {
+    return this._listeners.size;
   }
 
   private _notifyListeners() {
@@ -101,6 +112,28 @@ class PowerHelperService {
    */
   public getTargetFrameIntervalMs(hass?: any): number {
     return this.isPowerSaveActive(hass) ? 33 : 16;
+  }
+
+  /**
+   * For testing or manual override
+   */
+  public setMockLowPower(value: boolean) {
+    this._isLowPower = value;
+    this._notifyListeners();
+  }
+
+  /**
+   * Cleanup global listeners upon teardown
+   */
+  public destroy() {
+    if (this._battery) {
+      if (this._onChargingChange) this._battery.removeEventListener('chargingchange', this._onChargingChange);
+      if (this._onLevelChange) this._battery.removeEventListener('levelchange', this._onLevelChange);
+    }
+    if (typeof navigator !== 'undefined' && (navigator as any).connection && this._onConnectionChange) {
+      (navigator as any).connection.removeEventListener?.('change', this._onConnectionChange);
+    }
+    this._listeners.clear();
   }
 }
 

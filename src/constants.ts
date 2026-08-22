@@ -87,15 +87,16 @@ export const NON_TOGGLEABLE_DOMAINS: ReadonlySet<string> = Object.freeze(
   ])
 );
 
-export const SLIDER_SUPPORTED_DOMAINS: ReadonlySet<string> = Object.freeze(
+export const COLOR_MODES_SET: ReadonlySet<string> = Object.freeze(
+  new Set(['hs', 'xy', 'rgb', 'rgbw', 'rgbww', 'color_temp'])
+);
+
+export const HA_NAMED_COLORS: ReadonlySet<string> = Object.freeze(
   new Set([
-    'light',
-    'cover',
-    'fan',
-    'media_player',
-    'climate',
-    'humidifier',
-    'number',
-    'input_number',
+    'primary', 'accent', 'red', 'pink', 'purple', 'deep-purple', 'indigo',
+    'blue', 'light-blue', 'cyan', 'teal', 'green', 'light-green', 'lime',
+    'yellow', 'amber', 'orange', 'deep-orange', 'brown', 'grey', 'blue-grey',
+    'black', 'white', 'disabled'
   ])
 );
+

@@ -16,11 +16,11 @@ export interface GenericSliderConfig {
   serviceDataKey: string;
 }
 
-class SliderCalculationsEngine {
+export class SliderCalculationsEngine {
   /**
-   * Determine slider configuration parameters based on entity domain and state with bounds validation.
+   * Determine slider configuration parameters based on entity domain, state, and HA unit system with bounds validation.
    */
-  public getSliderConfig(domain: string, stateObj: any): GenericSliderConfig | null {
+  public getSliderConfig(domain: string, stateObj: any, hass?: any): GenericSliderConfig | null {
     if (!stateObj) return null;
 
     switch (domain) {
@@ -93,25 +93,31 @@ class SliderCalculationsEngine {
       }
 
       case 'climate': {
-        let min = stateObj.attributes?.min_temp;
-        let max = stateObj.attributes?.max_temp;
-        const step = stateObj.attributes?.target_temp_step ?? stateObj.attributes?.target_temperature_step ?? 0.5;
-        
-        // International fallback detection based on current temp magnitude
-        if (min === undefined || max === undefined) {
-          const sampleTemp = stateObj.attributes?.temperature ?? 20;
-          const isLikelyFahrenheit = sampleTemp > 45;
-          min = isLikelyFahrenheit ? 60 : 15;
-          max = isLikelyFahrenheit ? 85 : 30;
-        }
+        const unit = (
+          stateObj.attributes?.unit_of_measurement ||
+          stateObj.attributes?.temperature_unit ||
+          hass?.config?.unit_system?.temperature ||
+          '°F'
+        ).toString().toUpperCase();
+
+        const isFahrenheit = unit.includes('F');
+        const defaultMin = isFahrenheit ? 50 : 15;
+        const defaultMax = isFahrenheit ? 90 : 32;
+        const defaultStep = isFahrenheit ? 1 : 0.5;
+
+        let min = stateObj.attributes?.min_temp ?? defaultMin;
+        let max = stateObj.attributes?.max_temp ?? defaultMax;
+        const step = stateObj.attributes?.target_temp_step ?? stateObj.attributes?.target_temperature_step ?? defaultStep;
 
         if (min >= max) {
-          max = min + 10;
+          max = min + (isFahrenheit ? 10 : 5);
         }
 
-        const val = stateObj.attributes?.temperature ?? stateObj.attributes?.target_temp_low ?? min;
+        const rawVal = stateObj.attributes?.temperature ?? stateObj.attributes?.target_temp_low ?? min;
+        const val = this.clamp(rawVal, min, max);
         const range = max - min;
         const pct = range > 0 ? Math.max(0, Math.min(100, Math.round(((val - min) / range) * 100))) : 0;
+        
         return {
           domain: 'climate',
           label: 'Temperature',
