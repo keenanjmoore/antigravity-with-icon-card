@@ -1,5 +1,5 @@
 import { LitElement, html, unsafeCSS, PropertyValues, nothing, TemplateResult } from 'lit';
-import { customElement, property, state, eventOptions } from 'lit/decorators.js';
+import { property, state, eventOptions } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { handleAction, forwardHaptic } from 'custom-card-helpers';
@@ -13,15 +13,11 @@ import { runAntigravityCI } from './ci-workflow';
 import { antigravityCardStyles } from './styles/card-styles';
 import { SubButtonController } from './controllers/sub-button-controller';
 import { InfoFormatter } from './controllers/info-formatter';
+import { EntityController } from './controllers/entity-controller';
+import { SliderController, SliderCallbacks } from './controllers/slider-controller';
 import {
-  kelvinToRgb,
-  rgbToHex,
-  rgbToHue,
-  hsToRgb,
   parseColorToRgb,
-  lerpRgb,
-  COLOR_SWATCHES,
-  COLOR_TEMP_PRESETS
+  lerpRgb
 } from './color-converter';
 import './editor';
 
@@ -49,7 +45,7 @@ if (typeof window !== 'undefined') {
 
 export const CARD_VERSION = "145";
 console.info(
-  `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
+  `%c 🚀 ANTIGRAVITY-CARD (NO-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'color: #6200ea; background: #ede7f6; font-weight: 700; padding: 2px 6px; border-radius: 0 4px 4px 0;'
 );
@@ -83,10 +79,16 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
 // ---- Card Registration ----
 window.customCards = window.customCards || [];
 window.customCards.push({
+  type: "antigravity-no-icon-card",
+  name: "Antigravity No Icon Card",
+  preview: true,
+  description: "An ultra-streamlined, high-performance custom card merging Bubble Card styling with Mushroom Card controls, multi-stage transitions, and zero icon overhead."
+});
+window.customCards.push({
   type: "antigravity-with-icon-card",
   name: "Antigravity Card (With Icon)",
   preview: true,
-  description: "A custom card merging Bubble Card styling with Mushroom Card controls, full icon customizations, and multi-stage fade transitions."
+  description: "Default Antigravity Card (With Icon) (No Icon)"
 });
 
 // ---- Global Resume & Gesture Debounce State ----
@@ -101,16 +103,21 @@ if (typeof window !== 'undefined' && !(window as any).__AG_RESUME_LISTENER_ATTAC
   }, { passive: true });
 }
 
-// ---- Constants & State Sets (Module-Level to avoid GC thrashing) ----
+// ---- Active States (Domain-Aware) ----
 const ACTIVE_STATES = new Set([
-  'on', 'open', 'opening', 'active', 'cleaning', 'play', 'playing', 'cool',
-  'heat', 'fan_only', 'auto', 'dry', 'home', 'occupied', 'motion', 'detected',
-  'running', 'idle', 'true', '1', 'closing', 'unlocked', 'locking', 'unlocking',
+  'on', 'home', 'playing', 'paused', 'buffering',
+  'open', 'opening', 'closing',
+  'unlocked', 'locking', 'unlocking',
+  'heat', 'cool', 'heat_cool', 'auto', 'fan_only', 'dry',
   'armed_home', 'armed_away', 'armed_night', 'armed_vacation', 'armed_custom_bypass',
-  'triggered', 'pending', 'arming', 'returning', 'above_horizon', 'electric', 'gas', 'heat_pump',
-  'present'
+  'triggered', 'pending', 'arming',
+  'cleaning', 'returning',
+  'above_horizon',
+  'active', 'electric', 'gas', 'heat_pump',
+  'running', 'detected', 'motion', 'occupied', 'present'
 ]);
 
+// ---- HA Named Colors (Module-Level Constant for Performance) ----
 const HA_NAMED_COLORS = new Set([
   'primary', 'accent', 'red', 'pink', 'purple', 'deep-purple', 'indigo',
   'blue', 'light-blue', 'cyan', 'teal', 'green', 'light-green', 'lime',
@@ -218,7 +225,6 @@ function resolveColorCached(colorStr: string | undefined): string {
   return res;
 }
 
-@customElement('antigravity-with-icon-card')
 export class AntigravityWithIconCard extends LitElement {
   private _previousLiveRgb: [number, number, number] | null = null;
   private _currentLiveRgb: [number, number, number] | null = null;
@@ -335,7 +341,6 @@ export class AntigravityWithIconCard extends LitElement {
   private _staticCardStyles = '';
   private _staticCardClasses = '';
   private _textOffsetStyle = '';
-  private _iconOffsetStyle = '';
   private _featuresOffsetStyle = '';
   private _mainSliderMarginOffsets = '';
   private _colorTempMarginOffsets = '';
@@ -345,12 +350,6 @@ export class AntigravityWithIconCard extends LitElement {
   private _secondaryTextStyle = '';
   private _primaryTextOffsetStyle = '';
   private _secondaryTextOffsetStyle = '';
-  private _iconShapeClass = '';
-  private _iconAnimClass = '';
-  private _iconContainerSize = 36;
-  private _iconSize = 24;
-  private _iconOpacityStyle = '';
-  private _iconRotateStyle = '';
   private _fadeStaticConfig: any = null;
 
   private _computeStaticStylesAndClasses() {
@@ -399,7 +398,6 @@ export class AntigravityWithIconCard extends LitElement {
     const cardOpacityStyle = this.config.card_opacity !== undefined ? `opacity: ${this.config.card_opacity / 100};` : '';
     const transitionStyle = this.config.transition_duration !== undefined ? `transition: all ${this.config.transition_duration}ms ease;` : '';
 
-    const iconPaddingVar = this.config.icon_padding !== undefined ? `--ag-icon-padding: ${this.config.icon_padding}px;` : '';
     const textPaddingVert = this.config.text_padding_vertical ?? this.config.text_padding ?? 0;
     const textPaddingHoriz = this.config.text_padding_horizontal ?? this.config.text_padding ?? 0;
     const featuresPaddingVert = this.config.features_padding_vertical ?? this.config.features_padding ?? 0;
@@ -424,7 +422,6 @@ export class AntigravityWithIconCard extends LitElement {
       blurStyle,
       cardOpacityStyle,
       transitionStyle,
-      iconPaddingVar,
       `--ag-card-padding: ${pTop}px ${pRight}px ${pBottom}px ${pLeft}px;`,
       `--ag-text-padding: ${textPaddingVert}px ${textPaddingHoriz}px;`,
       `--ag-features-padding: ${featuresPaddingVert}px ${featuresPaddingHoriz}px;`,
@@ -434,12 +431,9 @@ export class AntigravityWithIconCard extends LitElement {
       `--ag-text-spacing: ${this.config.text_spacing ?? -1}px;`,
       `--ag-features-margin: ${this.config.features_margin ?? -3}px;`,
       `--ag-slider-spacing: ${this.config.slider_spacing ?? 6}px;`,
-      `--ag-icon-margin: ${this.config.icon_margin ?? 0}px;`,
       `--ag-sub-button-spacing: ${this.config.sub_button_spacing ?? -4}px;`,
       `--ag-slider-height: ${sliderHeight}px;`,
       `--ag-slider-radius: ${sliderRadius}px;`,
-      `--ag-badge-size: ${this.config.badge_size ?? 16}px;`,
-      `--ag-badge-offset: ${this.config.badge_offset ?? -2}px;`,
       `--ag-text-alignment: ${this.config.text_alignment ?? 'left'};`,
       `--ag-content-alignment: ${this.config.content_alignment ?? 'flex-start'};`,
       subBtnAlign,
@@ -473,10 +467,6 @@ export class AntigravityWithIconCard extends LitElement {
     const sTrans = (sStartX !== 0 || sOffsetY !== 0) ? `transform: translate(${sStartX}px, ${sOffsetY}px);` : '';
     const sMargin = (sStartX !== 0 || sEndX !== 0) ? `margin-left: ${sStartX}px; margin-right: ${sEndX}px;` : '';
     this._secondaryTextOffsetStyle = `${sTrans} ${sMargin}`.trim();
-
-    const iconOffsetX = Number(this.config.icon_offset_x) || 0;
-    const iconOffsetY = Number(this.config.icon_offset_y) || 0;
-    this._iconOffsetStyle = iconOffsetX !== 0 || iconOffsetY !== 0 ? `transform: translate(${iconOffsetX}px, ${iconOffsetY}px);` : '';
 
     const featuresOffsetX = Number(this.config.features_offset_x) || 0;
     const featuresOffsetY = Number(this.config.features_offset_y) || 0;
@@ -513,13 +503,6 @@ export class AntigravityWithIconCard extends LitElement {
 
     this._primaryTextStyle = `font-size: ${this.config.font_size_primary ?? 14}px; font-weight: ${primaryWeight}; ${txtTransformPrimary} ${letterSpacingStyle} ${lineHeightStyle}`;
     this._secondaryTextStyle = `font-size: ${this.config.font_size_secondary ?? 15}px; ${txtTransformSecondary} ${letterSpacingStyle} ${lineHeightStyle}`;
-
-    this._iconShapeClass = `icon-shape-${this.config.icon_shape || 'circle'}`;
-    this._iconAnimClass = `anim-${this.config.icon_animation || 'none'}`;
-    this._iconContainerSize = this.config.icon_container_size ?? (this.config.card_layout === 'large' ? 48 : 36);
-    this._iconSize = this.config.icon_size ?? 24;
-    this._iconOpacityStyle = (this.config.icon_opacity !== undefined && this.config.icon_opacity < 100) ? `opacity: ${this.config.icon_opacity / 100};` : '';
-    this._iconRotateStyle = (this.config.icon_rotate && this.config.icon_rotate !== 0) ? `transform: rotate(${this.config.icon_rotate}deg);` : '';
 
     // Pre-calculate sub-buttons array once
     const entityId = this.config.entity;
@@ -699,7 +682,7 @@ export class AntigravityWithIconCard extends LitElement {
         if (d) {
           const ageSec = Math.max(0, ((Date.now() - d.getTime()) / 1000) | 0);
           if (ageSec > 3600) {
-            intervalMs = 60000; // Over 1 hour old: tick once per minute
+            intervalMs = 60000; // Over 1 hour old: tick once per minute to save CPU
           } else if (ageSec > 60) {
             intervalMs = 15000; // Over 1 min old: tick every 15s
           }
@@ -718,6 +701,7 @@ export class AntigravityWithIconCard extends LitElement {
           this.requestUpdate();
         }
       }, intervalMs);
+
     } else if (!needsTimer && this._relativeTimer) {
       clearInterval(this._relativeTimer);
       this._relativeTimer = null;
@@ -981,56 +965,6 @@ export class AntigravityWithIconCard extends LitElement {
 
   private _parseDate(dateInput: string | Date | number | undefined): Date | null {
     return InfoFormatter.parseDate(dateInput);
-  }
-
-  private _computeDynamicIcon(stateObj: any): string | undefined {
-    if (!stateObj) return undefined;
-    const domain = (stateObj.entity_id || '').split('.')[0];
-    const devClass = stateObj.attributes?.device_class;
-    const isOn = stateObj.state === 'on';
-
-    if (domain === 'lock') {
-      if (stateObj.state === 'locked') return 'mdi:lock';
-      if (stateObj.state === 'jammed') return 'mdi:lock-alert';
-      if (stateObj.state === 'locking' || stateObj.state === 'unlocking') return 'mdi:lock-clock';
-      return 'mdi:lock-open-variant';
-    }
-    if (domain === 'binary_sensor') {
-      if (devClass === 'door') return isOn ? 'mdi:door-open' : 'mdi:door-closed';
-      if (devClass === 'window') return isOn ? 'mdi:window-open-variant' : 'mdi:window-closed-variant';
-      if (devClass === 'garage_door') return isOn ? 'mdi:garage-open' : 'mdi:garage';
-      if (devClass === 'motion') return isOn ? 'mdi:motion-sensor' : 'mdi:motion-sensor-off';
-      if (devClass === 'occupancy') return isOn ? 'mdi:home-account' : 'mdi:home-outline';
-      if (devClass === 'presence') return isOn ? 'mdi:account' : 'mdi:account-outline';
-      if (devClass === 'opening') return isOn ? 'mdi:lock-open' : 'mdi:lock';
-    }
-    if (domain === 'light') {
-      return isOn ? 'mdi:lightbulb' : 'mdi:lightbulb-outline';
-    }
-    if (domain === 'cover') {
-      const isOpen = stateObj.state === 'open' || stateObj.state === 'opening';
-      if (devClass === 'garage') return isOpen ? 'mdi:garage-open' : 'mdi:garage';
-      if (devClass === 'blind' || devClass === 'shutter') return isOpen ? 'mdi:window-shutter-open' : 'mdi:window-shutter';
-      if (devClass === 'curtain') return isOpen ? 'mdi:curtains-open' : 'mdi:curtains';
-      return isOpen ? 'mdi:window-open' : 'mdi:window-closed';
-    }
-    if (domain === 'fan') {
-      return isOn ? 'mdi:fan' : 'mdi:fan-off';
-    }
-    if (domain === 'climate') {
-      if (stateObj.state === 'heat') return 'mdi:fire';
-      if (stateObj.state === 'cool') return 'mdi:snowflake';
-      if (stateObj.state === 'dry') return 'mdi:water-percent';
-      if (stateObj.state === 'fan_only') return 'mdi:fan';
-      if (stateObj.state === 'auto' || stateObj.state === 'heat_cool') return 'mdi:thermostat-auto';
-      return 'mdi:thermostat';
-    }
-    if (domain === 'media_player') {
-      if (stateObj.state === 'playing') return 'mdi:play-circle';
-      if (stateObj.state === 'paused') return 'mdi:pause-circle';
-      return 'mdi:cast';
-    }
-    return undefined;
   }
 
   private _getInfoContent(type: string | undefined, stateObj: any): string | TemplateResult {
@@ -1613,79 +1547,7 @@ export class AntigravityWithIconCard extends LitElement {
   }
 
   private _getLightLiveColor(stateObj: any): string | null {
-    if (!stateObj || !stateObj.attributes || stateObj.state !== 'on') return null;
-    const attr = stateObj.attributes;
-    const colorMode = attr.color_mode;
-
-    // 1. If explicit color_temp mode, use color temperature
-    if (colorMode === 'color_temp') {
-      const kelvin = attr.color_temp_kelvin ?? (attr.color_temp ? Math.round(1000000 / attr.color_temp) : 3000);
-      const [r, g, b] = kelvinToRgb(kelvin);
-      return `rgb(${r}, ${g}, ${b})`;
-    }
-
-    // 2. If RGB / HS / XY / RGBW / RGBWW or rgb_color is present, prioritize RGB color!
-    if (Array.isArray(attr.rgb_color) && attr.rgb_color.length >= 3) {
-      return `rgb(${attr.rgb_color[0]}, ${attr.rgb_color[1]}, ${attr.rgb_color[2]})`;
-    }
-
-    if (Array.isArray(attr.hs_color) && attr.hs_color.length >= 2) {
-      const [r, g, b] = hsToRgb(attr.hs_color[0], attr.hs_color[1]);
-      return `rgb(${r}, ${g}, ${b})`;
-    }
-
-    if (Array.isArray(attr.rgbw_color) && attr.rgbw_color.length >= 3) {
-      return `rgb(${attr.rgbw_color[0]}, ${attr.rgbw_color[1]}, ${attr.rgbw_color[2]})`;
-    }
-
-    if (Array.isArray(attr.rgbww_color) && attr.rgbww_color.length >= 3) {
-      return `rgb(${attr.rgbww_color[0]}, ${attr.rgbww_color[1]}, ${attr.rgbww_color[2]})`;
-    }
-
-    // 3. Fallback color temp if defined and no RGB was present
-    if (attr.color_temp_kelvin !== undefined || attr.color_temp !== undefined) {
-      const kelvin = attr.color_temp_kelvin ?? Math.round(1000000 / attr.color_temp);
-      const [r, g, b] = kelvinToRgb(kelvin);
-      return `rgb(${r}, ${g}, ${b})`;
-    }
-
-    // 4. Default warm light glow when turned on
-    if (stateObj.state === 'on') {
-      return 'var(--state-light-active-color, rgb(255, 205, 120))';
-    }
-
-    return null;
-  }
-
-  private _getLiveHex(stateObj: any): string {
-    if (!stateObj?.attributes || stateObj.state !== 'on') return "#ffffff";
-    const attr = stateObj.attributes;
-    if (Array.isArray(attr.rgb_color) && attr.rgb_color.length >= 3) {
-      return rgbToHex(attr.rgb_color);
-    }
-    if (Array.isArray(attr.hs_color) && attr.hs_color.length >= 2) {
-      return rgbToHex(hsToRgb(attr.hs_color[0], attr.hs_color[1]));
-    }
-    if (attr.color_temp_kelvin !== undefined || attr.color_temp !== undefined) {
-      const kelvin = attr.color_temp_kelvin ?? Math.round(1000000 / attr.color_temp);
-      return rgbToHex(kelvinToRgb(kelvin));
-    }
-    const liveColor = this._getLightLiveColor(stateObj);
-    if (!liveColor) return "#ffffff";
-    const rgb = parseColorToRgb(liveColor);
-    return rgb ? rgbToHex(rgb) : "#ffffff";
-  }
-
-  private _getLiveHue(stateObj: any): number {
-    if (!stateObj) return 0;
-    if (Array.isArray(stateObj.attributes?.hs_color) && stateObj.attributes.hs_color.length >= 1) {
-      return Math.round(stateObj.attributes.hs_color[0]) % 360;
-    }
-    if (Array.isArray(stateObj.attributes?.rgb_color) && stateObj.attributes.rgb_color.length >= 3) {
-      const [r, g, b] = stateObj.attributes.rgb_color;
-      return rgbToHue(r, g, b);
-    }
-    return 0;
+    return EntityController.getLightLiveColor(stateObj);
   }
 
   private _handleColorInput(e: Event, throttle: boolean, entityOverride?: string, throttleKey?: string) {
@@ -1743,12 +1605,6 @@ export class AntigravityWithIconCard extends LitElement {
     const isActive = this._isEntityActive(stateObj);
     const domain = entityId.split('.')[0];
 
-    // Icon & Shape formatting
-    const iconType = this.config.icon_type ?? 'icon';
-    const showIconArea = this.config.show_icon !== false && iconType !== 'none';
-    const iconShapeClass = this._iconShapeClass;
-    const iconAnimClass = this._iconAnimClass;
-
     // Smart Domain-Aware Default Active Color
     let defaultActiveColor = 'var(--primary-color)';
     let liveLightColor: string | null = null;
@@ -1785,12 +1641,6 @@ export class AntigravityWithIconCard extends LitElement {
     }
 
     const inactiveColor = this._resolveColor(this.config.inactive_color) || defaultInactiveColor;
-    const iconBg = colorTypeIsCard ? 'transparent' : (isActive ? activeColor : inactiveColor);
-    const iconColorStyle = this.config.icon_color 
-      ? `color: ${this._resolveColor(this.config.icon_color)};` 
-      : (colorTypeIsCard && isActive ? `color: #ffffff; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));` : '');
-    const iconOpacityStyle = this._iconOpacityStyle;
-    const iconRotateStyle = this._iconRotateStyle;
 
     // Multi-Domain Interactive Sliders
     const hasControls = this.config.show_slider !== false;
@@ -1876,10 +1726,7 @@ export class AntigravityWithIconCard extends LitElement {
       rawBgStyle = `rgba(150, 150, 150, ${bgOpacity})`;
     }
 
-    let effectiveIconBg = iconBg;
-    if (multiStageFade.activeFade && (fadeTarget === 'icon' || fadeTarget === 'all')) {
-      effectiveIconBg = colorTypeIsCard ? 'transparent' : multiStageFade.currentColor;
-    }
+
 
     let effectiveGlowColor = this._resolveColor(this.config.active_color) || (domain === 'light' && liveLightColor ? liveLightColor : activeColor) || 'var(--primary-color)';
     if (multiStageFade.activeFade && (fadeTarget === 'all' || this.config.active_glow === true)) {
@@ -1922,8 +1769,6 @@ export class AntigravityWithIconCard extends LitElement {
     }
 
     const isInline = this.config.features_position === 'inline';
-    const iconSize = this._iconSize;
-    const containerSize = this._iconContainerSize;
 
     const scrollPrimary = this.config.text_scrolling_primary || 'none';
     const scrollSecondary = this.config.text_scrolling_secondary || 'none';
@@ -1970,26 +1815,6 @@ export class AntigravityWithIconCard extends LitElement {
           ${decayPos === 'top' ? this._renderDecaySlider(multiStageFade) : nothing}
 
           <div class="info-container">
-            ${showIconArea ? html`
-              <div class="icon-container ${iconShapeClass} ${iconAnimClass} ${this.config.active_pulse && isActive ? 'pulse' : ''} ${(this.config.active_glow || this.config.box_shadow === 'glow') && (isActive || multiStageFade.activeFade) ? 'glow' : ''}" 
-                   style="${this._iconOffsetStyle} ${iconColorStyle} ${iconOpacityStyle} background-color: ${effectiveIconBg}; width: ${containerSize}px; height: ${containerSize}px; --mdc-icon-size: ${iconSize}px; ${!isAvailable ? 'opacity: 0.5; pointer-events: none;' : ''}" 
-                   ?active=${isActive}>
-                ${iconType === 'entity-picture' && stateObj.attributes.entity_picture
-                  ? html`<img class="entity-picture ${iconShapeClass}" src="${stateObj.attributes.entity_picture}" style="width: ${iconSize}px; height: ${iconSize}px; ${iconRotateStyle}" />`
-                  : html`<ha-state-icon
-                      .hass=${this.hass}
-                      .stateObj=${stateObj}
-                      .icon=${this.config.icon || this._computeDynamicIcon(stateObj)}
-                      style="--mdc-icon-size: ${iconSize}px; width: ${iconSize}px; height: ${iconSize}px; ${iconRotateStyle}"
-                    ></ha-state-icon>`
-                }
-                ${this.config.badge_icon ? html`
-                  <div class="badge" style="background: ${this._resolveColor(this.config.badge_color) || activeColor};">
-                    <ha-icon .icon=${this.config.badge_icon}></ha-icon>
-                  </div>
-                ` : nothing}
-              </div>
-            ` : nothing}
             <div class="info" style="${this._textOffsetStyle} ${this._textBoxWidth} text-align: var(--ag-text-alignment);">
               ${primaryText ? html`
                 <div class="text-marquee-container scroll-${scrollPrimary}" style="${this._primaryTextOffsetStyle}">
@@ -2029,81 +1854,41 @@ export class AntigravityWithIconCard extends LitElement {
     `;
   }
 
+  private _getSliderCallbacks(): SliderCallbacks {
+    return {
+      onPointerDown: this._onSliderPointerDown,
+      onPointerMove: this._onSliderPointerMove,
+      onPointerUp: this._onSliderPointerUp,
+      onPointerCancel: this._onSliderPointerCancel,
+      onSliderInput: (e, key, domain, service, dataFn, pctCalc, labelFormatter) =>
+        this._sliderInput(e, key, domain, service, dataFn, pctCalc, labelFormatter),
+      onSliderChange: (e, domain, service, dataFn) =>
+        this._sliderChange(e, domain, service, dataFn),
+      onColorInput: (e, throttle, entityOverride, throttleKey) =>
+        this._handleColorInput(e, throttle, entityOverride, throttleKey),
+      callService: (domain, service, data) =>
+        this.hass.callService(domain, service, data),
+      forwardHaptic: (type) =>
+        safeForwardHaptic(type, this.config.haptic_feedback !== false)
+    };
+  }
+
   // --- DECAY / COOLDOWN SLIDER COMPONENT ---
   private _renderDecaySlider(fade: FadeCalculationResult) {
     if (!this.config.show_decay_slider || !fade.enabled || !fade.activeFade) {
       return nothing;
     }
-
     const isGoogle = this.config.slider_style === 'google';
     const sliderHeight = this.config.decay_slider_height ?? (isGoogle ? 32 : 10);
     const sliderRadius = this.config.slider_border_radius ?? (isGoogle ? 16 : 5);
     const remainingPct = Math.max(0, 100 - fade.progressPct);
 
     return html`
-      <div class="decay-slider-container" style="--decay-color: ${fade.currentColor}; --decay-pct: ${remainingPct}%;">
+      <div class="decay-slider-container" style="--decay-color: ${fade.currentColor};">
         <div class="decay-slider-track" style="height: ${sliderHeight}px; border-radius: ${sliderRadius}px;">
-          <div class="decay-slider-fill" style="background: ${fade.currentColor}; border-radius: ${sliderRadius}px;"></div>
+          <div class="decay-slider-fill" style="width: ${remainingPct}%; background: ${fade.currentColor}; border-radius: ${sliderRadius}px;"></div>
           <span class="decay-slider-badge">${fade.stageLabel}</span>
         </div>
-      </div>
-    `;
-  }
-
-  // --- GENERIC SLIDER COMPONENT HELPER ---
-  private _renderGenericSlider(
-    key: string,
-    label: string,
-    min: number,
-    max: number,
-    step: number,
-    val: number,
-    pct: number,
-    domain: string,
-    service: string,
-    dataFn: (v: number) => Record<string, any>,
-    pctCalc?: (v: number) => number,
-    labelFormatter?: (v: number, p: number) => string,
-    customClass = '',
-    customStyle = '',
-    badgeContent?: TemplateResult | string
-  ) {
-    const isGoogle = this.config.slider_style === 'google';
-    const showPercent = (isGoogle && this.config.show_slider_percent !== false) || this.config.show_slider_percent === true;
-    const defaultBadgeText = labelFormatter ? labelFormatter(val, pct) : `${pct}%`;
-    const finalBadge = badgeContent !== undefined ? badgeContent : defaultBadgeText;
-
-    const effectiveStep = (this.config.slider_stepped_movement === false) ? 'any' : step;
-
-    const isMainSlider = key !== 'color_temp' && key !== 'color_hue';
-    const isFullStyle = this.config.slider_style === 'full';
-    const fullClass = (isMainSlider && isFullStyle) ? 'main-slider-full' : '';
-
-    let marginOffsets = '';
-    if (isMainSlider && isFullStyle) {
-      const startOffset = Number(this.config.slider_start_offset) || 0;
-      const endOffset = Number(this.config.slider_end_offset) || 0;
-      marginOffsets = `left: ${startOffset}px !important; right: ${endOffset}px !important; width: calc(100% - ${(startOffset + endOffset)}px) !important;`;
-    } else if (key === 'color_temp') {
-      marginOffsets = this._colorTempMarginOffsets;
-    } else if (key === 'color_hue') {
-      marginOffsets = this._colorHueMarginOffsets;
-    } else {
-      marginOffsets = this._mainSliderMarginOffsets;
-    }
-
-    return html`
-      <div class="slider-container ${customClass} ${fullClass} ${isGoogle ? 'slider-google-wrap' : ''}" style="${marginOffsets} ${customStyle}">
-        <input type="range" min=${min} max=${max} step=${effectiveStep} .value=${val}
-               aria-label="${label}"
-               style="--slider-pct: ${pct}%;"
-               @pointerdown=${this._onSliderPointerDown}
-               @pointermove=${this._onSliderPointerMove}
-               @pointerup=${this._onSliderPointerUp}
-               @pointercancel=${this._onSliderPointerCancel}
-               @input=${(e: Event) => this._sliderInput(e, key, domain, service, dataFn, pctCalc, labelFormatter)}
-               @change=${(e: Event) => this._sliderChange(e, domain, service, dataFn)} />
-        ${showPercent && finalBadge ? html`<span class="slider-percent-badge">${finalBadge}</span>` : nothing}
       </div>
     `;
   }
@@ -2111,271 +1896,43 @@ export class AntigravityWithIconCard extends LitElement {
   // --- MULTI-DOMAIN SLIDER RENDERERS ---
 
   private _renderLightSlider(stateObj: any) {
-    const isActive = this._isEntityActive(stateObj);
-    const val = stateObj.attributes.brightness ?? 0;
-    const pct = Math.max(0, Math.min(100, Math.round((val / 255) * 100)));
-    const liveColor = this._getLightLiveColor(stateObj);
-    const sliderColorStyle = (this.config.use_light_color !== false || !this.config.slider_color) && liveColor ? `--slider-color: ${liveColor};` : '';
-    return this._renderGenericSlider(
-      'brightness', 'Brightness', 0, 255, 1, val, pct, 'light', 'turn_on',
-      (v) => ({ brightness: v }), (v) => Math.round((v / 255) * 100), (_, p) => (!isActive || p <= 0 ? '' : `${p}%`),
-      '', sliderColorStyle
-    );
+    return SliderController.renderLightSlider(this.config, stateObj, this._getSliderCallbacks(), this._mainSliderMarginOffsets);
   }
 
   private _renderColorTempSlider(stateObj: any) {
-    const tempType = this.config.color_temp_type || 'gradient';
-    const isKelvin = stateObj.attributes.color_temp_kelvin !== undefined || stateObj.attributes.min_color_temp_kelvin !== undefined || stateObj.attributes.max_color_temp_kelvin !== undefined;
-    const min = isKelvin ? (stateObj.attributes.min_color_temp_kelvin || 2000) : (stateObj.attributes.min_mireds || 153);
-    const max = isKelvin ? (stateObj.attributes.max_color_temp_kelvin || 6500) : (stateObj.attributes.max_mireds || 500);
-    const val = isKelvin ? (stateObj.attributes.color_temp_kelvin || 3000) : (stateObj.attributes.color_temp || 300);
-    const range = max - min;
-    const pct = range > 0 ? Math.max(0, Math.min(100, Math.round(((val - min) / range) * 100))) : 0;
-    const paramKey = isKelvin ? 'color_temp_kelvin' : 'color_temp';
-    const isGoogle = tempType === 'google' || (tempType === 'gradient' && this.config.slider_style === 'google');
-    const defaultSliderHeight = isGoogle ? 42 : (tempType === 'thin' ? 6 : 12);
-    const defaultSliderRadius = isGoogle ? 21 : (tempType === 'thin' ? 3 : 6);
-    const ctHeight = this.config.color_temp_height !== undefined ? this.config.color_temp_height : (this.config.slider_height ?? defaultSliderHeight);
-    const ctRadius = this.config.color_temp_border_radius !== undefined ? this.config.color_temp_border_radius : (this.config.slider_border_radius ?? defaultSliderRadius);
-    const labelText = isKelvin ? `${val} K` : `${val} mireds`;
-
-    if (tempType === 'presets') {
-      const ctStartOffset = Number(this.config.color_temp_start_offset) || 0;
-      const ctEndOffset = Number(this.config.color_temp_end_offset) || 0;
-      const ctMarginOffsets = [
-        ctStartOffset ? `margin-left: ${ctStartOffset}px;` : '',
-        ctEndOffset ? `margin-right: ${ctEndOffset}px;` : ''
-      ].filter(Boolean).join(' ');
-
-      return html`
-        <div class="presets-row" style="display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; ${ctMarginOffsets}">
-          ${COLOR_TEMP_PRESETS.map(p => {
-            const [r, g, b] = p.rgb;
-            const isSelected = Math.abs(val - p.k) < 200;
-            const applyPreset = () => {
-              safeForwardHaptic('light', this.config.haptic_feedback !== false);
-              this.hass?.callService('light', 'turn_on', { entity_id: this.config.entity, [paramKey]: p.k });
-            };
-            return html`
-              <button 
-                type="button"
-                role="button"
-                aria-label="Color temperature preset: ${p.label}"
-                tabindex="0"
-                class="temp-preset-chip"
-                style="flex: 1; min-width: 48px; height: ${ctHeight}px; border-radius: ${ctRadius}px; border: ${isSelected ? '2px solid #ffffff' : '1px solid rgba(150, 150, 150, 0.3)'}; background: rgba(${r}, ${g}, ${b}, 0.2); color: var(--primary-text-color); font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: ${isSelected ? '0 0 8px rgba(' + r + ',' + g + ',' + b + ', 0.8)' : 'none'};"
-                @keydown=${(e: KeyboardEvent) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    applyPreset();
-                  }
-                }}
-                @click=${(e: Event) => {
-                  e.stopPropagation();
-                  applyPreset();
-                }}>
-                <span style="width: 8px; height: 8px; border-radius: 50%; background: rgb(${r}, ${g}, ${b}); display: inline-block;"></span>
-                ${p.label}
-              </button>
-            `;
-          })}
-        </div>
-      `;
-    }
-    
-    return this._renderGenericSlider(
-      'color_temp', 'Color Temperature', min, max, 1, val, pct, 'light', 'turn_on',
-      (v) => ({ [paramKey]: v }), (v) => range > 0 ? Math.round(((v - min) / range) * 100) : 0,
-      (v) => isKelvin ? `${v} K` : `${v} mireds`,
-      `color-temp ${isKelvin ? 'kelvin' : 'mireds'} ${isGoogle ? 'slider-google-wrap' : ''}`,
-      `--ag-slider-height: ${ctHeight}px; --ag-slider-radius: ${ctRadius}px;`,
-      labelText
-    );
+    return SliderController.renderColorTempSlider(this.config, stateObj, this._getSliderCallbacks(), this._colorTempMarginOffsets);
   }
 
   private _renderColorSlider(stateObj: any) {
-    const pickerType = this.config.color_picker_type || 'slider';
-    if (pickerType === 'wheel') {
-      return this._renderColorPicker(stateObj);
-    }
-    if (pickerType === 'swatches') {
-      const curHex = this._getLiveHex(stateObj).toLowerCase();
-      const csHeight = this.config.color_slider_height !== undefined ? this.config.color_slider_height : 32;
-      const csRadius = this.config.color_slider_border_radius !== undefined ? this.config.color_slider_border_radius : 8;
-
-      const csStartOffset = Number(this.config.color_slider_start_offset) || 0;
-      const csEndOffset = Number(this.config.color_slider_end_offset) || 0;
-      const csMarginOffsets = [
-        csStartOffset ? `margin-left: ${csStartOffset}px;` : '',
-        csEndOffset ? `margin-right: ${csEndOffset}px;` : ''
-      ].filter(Boolean).join(' ');
-
-      return html`
-        <div class="swatches-palette-row" style="display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; ${csMarginOffsets}">
-          ${COLOR_SWATCHES.map(s => {
-            const isSelected = curHex === s.hex.toLowerCase();
-            const applySwatch = () => {
-              safeForwardHaptic('light', this.config.haptic_feedback !== false);
-              this.hass?.callService('light', 'turn_on', { entity_id: this.config.entity, rgb_color: s.rgb });
-            };
-            return html`
-              <button 
-                type="button"
-                role="button"
-                aria-label="Color preset: ${s.label}"
-                tabindex="0"
-                class="color-swatch-chip"
-                title="${s.label}"
-                style="flex: 1; min-width: 28px; height: ${csHeight}px; border-radius: ${csRadius}px; background: ${s.hex}; border: ${isSelected ? '2px solid #ffffff' : '1px solid rgba(0,0,0,0.2)'}; cursor: pointer; box-shadow: ${isSelected ? '0 0 10px ' + s.hex : '0 1px 3px rgba(0,0,0,0.3)'}; transition: transform 0.15s ease;"
-                @keydown=${(e: KeyboardEvent) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    applySwatch();
-                  }
-                }}
-                @click=${(e: Event) => {
-                  e.stopPropagation();
-                  applySwatch();
-                }}>
-              </button>
-            `;
-          })}
-        </div>
-      `;
-    }
-
-    const hue = this._getLiveHue(stateObj);
-    const pct = Math.max(0, Math.min(100, Math.round((hue / 360) * 100)));
-    const isGoogle = pickerType === 'google' || this.config.slider_style === 'google';
-    const defaultSliderHeight = isGoogle ? 42 : 12;
-    const defaultSliderRadius = isGoogle ? 21 : 6;
-    const csHeight = this.config.color_slider_height !== undefined ? this.config.color_slider_height : (this.config.slider_height ?? defaultSliderHeight);
-    const csRadius = this.config.color_slider_border_radius !== undefined ? this.config.color_slider_border_radius : (this.config.slider_border_radius ?? defaultSliderRadius);
-    const currentColor = `hsl(${hue}, 100%, 50%)`;
-
-    const badgeContent = html`
-      <span class="color-chip-badge" style="display: flex; align-items: center; gap: 6px;">
-        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${currentColor}; border: 1.5px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></span>
-        ${hue}°
-      </span>
-    `;
-
-    return this._renderGenericSlider(
-      'color_hue', 'Color Hue', 0, 360, 1, hue, pct, 'light', 'turn_on',
-      (v) => {
-        const [r, g, b] = hsToRgb(v, 100);
-        return { rgb_color: [r, g, b] };
-      },
-      (v) => Math.round((v / 360) * 100), (v) => `${v}°`,
-      `color-hue ${isGoogle ? 'slider-google-wrap' : ''}`,
-      `--ag-slider-height: ${csHeight}px; --ag-slider-radius: ${csRadius}px; --color-hue-val: ${currentColor};`,
-      badgeContent
-    );
+    return SliderController.renderColorSlider(this.config, stateObj, this._getSliderCallbacks(), this._colorHueMarginOffsets);
   }
 
   private _renderColorPicker(stateObj: any) {
-    const hex = this._getLiveHex(stateObj);
-    const cpHeight = this.config.color_slider_height !== undefined ? this.config.color_slider_height : (this.config.slider_height ?? 36);
-    const cpRadius = this.config.color_slider_border_radius !== undefined ? this.config.color_slider_border_radius : (this.config.slider_border_radius ?? 8);
-    return html`
-      <div class="color-picker" title="Adjust Light Color" style="height: ${cpHeight}px; border-radius: ${cpRadius}px;">
-        <input type="color" 
-               .value=${hex} 
-               @input=${(e: Event) => this._handleColorInput(e, true)}
-               @change=${(e: Event) => this._handleColorInput(e, false)} />
-        <span class="color-label">Color (${hex})</span>
-      </div>
-    `;
+    return SliderController.renderColorPicker(this.config, stateObj, this._getSliderCallbacks());
   }
 
   private _renderCoverSlider(stateObj: any) {
-    const pos = stateObj.attributes.current_position ?? ((stateObj.state === 'open' || stateObj.state === 'opening') ? 100 : 0);
-    return this._renderGenericSlider(
-      'cover', 'Cover Position', 0, 100, 1, pos, pos, 'cover', 'set_cover_position',
-      (v) => ({ position: v }), (v) => v, (_, p) => `${p}%`
-    );
+    return SliderController.renderCoverSlider(this.config, stateObj, this._getSliderCallbacks(), this._mainSliderMarginOffsets);
   }
 
   private _renderFanSlider(stateObj: any) {
-    const pct = stateObj.attributes.percentage ?? 0;
-    const step = stateObj.attributes.percentage_step ?? 1;
-    return this._renderGenericSlider(
-      'fan', 'Fan Speed', 0, 100, step, pct, pct, 'fan', 'set_percentage',
-      (v) => {
-        const snapped = step > 1 ? Math.round(v / step) * step : v;
-        return { percentage: Math.min(100, Math.max(0, snapped)) };
-      }, (v) => v, (_, p) => `${p}%`
-    );
+    return SliderController.renderFanSlider(this.config, stateObj, this._getSliderCallbacks(), this._mainSliderMarginOffsets);
   }
 
   private _renderMediaSlider(stateObj: any) {
-    const isMuted = stateObj.attributes.is_volume_muted === true;
-    const vol = isMuted ? 0 : Math.round((stateObj.attributes.volume_level ?? 0) * 100);
-    const label = isMuted ? 'Muted (0%)' : undefined;
-    return this._renderGenericSlider(
-      'media', 'Volume', 0, 100, 1, vol, vol, 'media_player', 'volume_set',
-      (v) => ({ volume_level: v / 100 }), (v) => v, (_, p) => (isMuted ? 'Muted' : `${p}%`),
-      'media', '', label
-    );
+    return SliderController.renderMediaSlider(this.config, stateObj, this._getSliderCallbacks(), this._mainSliderMarginOffsets);
   }
 
   private _renderNumberSlider(stateObj: any) {
-    const min = Number(stateObj.attributes.min ?? 0);
-    let max = Number(stateObj.attributes.max ?? 100);
-    if (min >= max) max = min + 100;
-    const step = Number(stateObj.attributes.step ?? 1);
-    const numVal = Number(stateObj.state);
-    const val = !isNaN(numVal) ? numVal : min;
-    const range = max - min;
-    const pct = range > 0 ? Math.max(0, Math.min(100, Math.round(((val - min) / range) * 100))) : 0;
-    const svcDomain = (this.config.entity || 'number').split('.')[0];
-    const unit = stateObj.attributes.unit_of_measurement ? ` ${stateObj.attributes.unit_of_measurement}` : '';
-    const stepStr = step.toString();
-    const precision = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
-
-    return this._renderGenericSlider(
-      'number', 'Value', min, max, step, val, pct, svcDomain, 'set_value',
-      (v) => ({ value: precision > 0 ? Number(v.toFixed(precision)) : Math.round(v) }),
-      (v) => range > 0 ? Math.round(((v - min) / range) * 100) : 0, 
-      (v) => `${precision > 0 ? Number(v).toFixed(precision) : Math.round(Number(v))}${unit}`
-    );
+    return SliderController.renderNumberSlider(this.config, stateObj, this._getSliderCallbacks(), this._mainSliderMarginOffsets);
   }
 
   private _renderClimateSlider(stateObj: any) {
-    const isFahrenheit = this.hass.config?.unit_system?.temperature === '°F' || this.hass.config?.unit_system?.temperature === 'F';
-    const unit = isFahrenheit ? '°F' : '°C';
-    const defaultMin = isFahrenheit ? 60 : 16;
-    const defaultMax = isFahrenheit ? 85 : 30;
-    const min = stateObj.attributes.min_temp ?? defaultMin;
-    const max = stateObj.attributes.max_temp ?? defaultMax;
-    const step = stateObj.attributes.target_temp_step ?? stateObj.attributes.target_temperature_step ?? (isFahrenheit ? 1 : 0.5);
-    const hasDualTargets = stateObj.attributes.target_temp_low !== undefined && stateObj.attributes.target_temp_high !== undefined;
-    const val = stateObj.attributes.temperature ?? stateObj.attributes.target_temp_low ?? stateObj.attributes.target_temp_high ?? min;
-    const range = max - min;
-    const pct = range > 0 ? Math.max(0, Math.min(100, Math.round(((val - min) / range) * 100))) : 0;
-    return this._renderGenericSlider(
-      'climate', 'Temperature', min, max, step, val, pct, 'climate', 'set_temperature',
-      (v) => (hasDualTargets ? { target_temp_low: v, target_temp_high: Math.min(max, v + (isFahrenheit ? 4 : 2)) } : { temperature: v }),
-      (v) => range > 0 ? Math.round(((v - min) / range) * 100) : 0,
-      (v) => `${v}${unit}`,
-      'climate-temp',
-      '', `${val}${unit}`
-    );
+    return SliderController.renderClimateSlider(this.config, stateObj, this.hass, this._getSliderCallbacks(), this._mainSliderMarginOffsets);
   }
 
   private _renderHumidifierSlider(stateObj: any) {
-    const min = stateObj.attributes?.min_humidity ?? 0;
-    const max = stateObj.attributes?.max_humidity ?? 100;
-    const val = stateObj.attributes?.humidity ?? stateObj.attributes?.target_humidity ?? min;
-    const range = max - min;
-    const pct = range > 0 ? Math.max(0, Math.min(100, Math.round(((val - min) / range) * 100))) : 0;
-    return this._renderGenericSlider(
-      'humidifier', 'Humidity', min, max, 1, val, pct, 'humidifier', 'set_humidity',
-      (v) => ({ humidity: v }), (v) => range > 0 ? Math.round(((v - min) / range) * 100) : 0,
-      (_, p) => `${p}%`
-    );
+    return SliderController.renderHumidifierSlider(this.config, stateObj, this._getSliderCallbacks(), this._mainSliderMarginOffsets);
   }
 
   // --- EXTRACTED SUB-BUTTON RENDERERS ---
@@ -2384,143 +1941,21 @@ export class AntigravityWithIconCard extends LitElement {
     entityId: string, stateObj: any, subType: string,
     colorStyle: string, bgClass: string
   ) {
-    const targetState = stateObj || this.hass.states[this.config.entity || ''];
-    const subEntityId = entityId || this.config.entity || '';
-    
-    const isVolume = targetState?.attributes?.volume_level !== undefined || targetState?.entity_id?.startsWith('media_player.');
-    const isFan = targetState?.attributes?.percentage !== undefined || targetState?.entity_id?.startsWith('fan.');
-    const isCover = targetState?.attributes?.current_position !== undefined || targetState?.entity_id?.startsWith('cover.');
-    
-    let val = 0;
-    let minVal = 0;
-    let maxVal = 255;
-    let stepVal = '1';
-    let service = 'turn_on';
-    let domainName = 'light';
-    let dataKey = 'brightness';
-
-    if (isVolume) {
-      val = targetState?.attributes?.volume_level ?? 0;
-      maxVal = 1;
-      stepVal = '0.01';
-      service = 'set_volume_level';
-      domainName = 'media_player';
-      dataKey = 'volume_level';
-    } else if (isFan) {
-      val = targetState?.attributes?.percentage ?? 0;
-      maxVal = 100;
-      stepVal = '1';
-      service = 'set_percentage';
-      domainName = 'fan';
-      dataKey = 'percentage';
-    } else if (isCover) {
-      val = targetState?.attributes?.current_position ?? 0;
-      maxVal = 100;
-      stepVal = '1';
-      service = 'set_cover_position';
-      domainName = 'cover';
-      dataKey = 'position';
-    } else {
-      val = targetState?.attributes?.brightness ?? 0;
-    }
-    
-    const pct = maxVal === 1 ? Math.round(val * 100) : (maxVal === 100 ? Math.round(val) : Math.round((val / 255) * 100));
-
-    if (subType === 'slider') {
-      return html`
-        <div class="sub-button-slider-container ${bgClass}" style="${colorStyle}" title="Level: ${pct}%">
-          <input type="range" 
-                 min="${minVal}" 
-                 max=${maxVal} 
-                 step=${stepVal} 
-                 .value=${val}
-                 @pointerdown=${(e: Event) => e.stopPropagation()}
-                 @input=${(e: Event) => {
-                   e.stopPropagation();
-                   const v = parseFloat((e.target as HTMLInputElement).value);
-                   const p = maxVal === 1 ? Math.round(v * 100) : (maxVal === 100 ? Math.round(v) : Math.round((v / 255) * 100));
-                   const container = (e.target as HTMLElement).closest('.sub-button-slider-container');
-                   if (container) {
-                     container.setAttribute('title', `Level: ${p}%`);
-                   }
-                   this._throttledCall('sub_slider_' + subEntityId, () => {
-                     this.hass?.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
-                   });
-                 }}
-                 @change=${(e: Event) => {
-                   e.stopPropagation();
-                   const v = parseFloat((e.target as HTMLInputElement).value);
-                   this.hass?.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
-                 }} />
-        </div>
-      `;
-    } else {
-      return html`
-        <div class="sub-button-google-slider ${bgClass}" style="${colorStyle} --slider-pct: ${pct}%;" title="Level: ${pct}%">
-          <input type="range" 
-                 min="${minVal}" 
-                 max=${maxVal} 
-                 step=${stepVal} 
-                 .value=${val}
-                 style="--slider-pct: ${pct}%;"
-                 @pointerdown=${(e: Event) => e.stopPropagation()}
-                 @input=${(e: Event) => {
-                   e.stopPropagation();
-                   const v = parseFloat((e.target as HTMLInputElement).value);
-                   const p = maxVal === 1 ? Math.round(v * 100) : (maxVal === 100 ? Math.round(v) : Math.round((v / 255) * 100));
-                   const inputEl = e.target as HTMLInputElement;
-                   requestAnimationFrame(() => {
-                     inputEl.style.setProperty('--slider-pct', `${p}%`);
-                     const container = inputEl.closest('.sub-button-google-slider') as HTMLElement;
-                     if (container) {
-                       container.style.setProperty('--slider-pct', `${p}%`);
-                       container.title = `Level: ${p}%`;
-                       const pctEl = container.querySelector('.sub-slider-pct');
-                       if (pctEl) pctEl.textContent = `${p}%`;
-                     }
-                   });
-                   this._throttledCall('sub_slider_' + subEntityId, () => {
-                     this.hass?.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
-                   });
-                 }}
-                 @change=${(e: Event) => {
-                   e.stopPropagation();
-                   const v = parseFloat((e.target as HTMLInputElement).value);
-                   this.hass?.callService(domainName, service, { entity_id: subEntityId, [dataKey]: v });
-                 }} />
-          <span class="sub-slider-pct">${pct}%</span>
-        </div>
-      `;
-    }
+    return SliderController.renderSubSlider(
+      this.config, this.hass, entityId, stateObj, subType, colorStyle, bgClass,
+      this._throttledCall.bind(this)
+    );
   }
 
   private _renderSubColorPicker(
     entityId: string, stateObj: any,
-    colorStyle: string, bgClass: string, label?: string, liveStateText?: string | TemplateResult
+    colorStyle: string, bgClass: string,
+    label?: string, liveStateText?: string | TemplateResult
   ) {
-    const targetState = stateObj || this.hass.states[this.config.entity || ''];
-    const currentHex = this._getLiveHex(targetState);
-    return html`
-      <div class="sub-button sub-color-picker ${bgClass}" 
-           tabindex="0" 
-           role="button" 
-           title="Select Color (${currentHex})" 
-           style="${colorStyle} background: ${currentHex} !important; border: 2px solid rgba(255,255,255,0.7); box-shadow: 0 1px 4px rgba(0,0,0,0.3);"
-           @keydown=${(e: KeyboardEvent) => {
-             if (e.key === 'Enter' || e.key === ' ') {
-               e.preventDefault();
-               (e.currentTarget as HTMLElement).querySelector('input')?.click();
-             }
-           }}>
-        <input type="color" 
-               aria-label="Color Picker"
-               .value=${currentHex} 
-               @input=${(e: Event) => this._handleColorInput(e, true, entityId || this.config.entity, 'sub_color_picker_' + entityId)}
-               @change=${(e: Event) => this._handleColorInput(e, false, entityId || this.config.entity)} />
-        ${label ? html`<span class="sub-button-label" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">${label}</span>` : nothing}
-        ${liveStateText ? html`<span class="sub-button-state" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">${liveStateText}</span>` : nothing}
-      </div>
-    `;
+    return SliderController.renderSubColorPicker(
+      this.hass, entityId, stateObj, colorStyle, bgClass, this._getSliderCallbacks(),
+      label, liveStateText
+    );
   }
 
   private _renderSubButton(
@@ -2620,7 +2055,11 @@ export class AntigravityWithIconCard extends LitElement {
   }
 }
 
+if (!customElements.get('antigravity-no-icon-card')) {
+  customElements.define('antigravity-no-icon-card', AntigravityWithIconCard);
+}
 if (!customElements.get('antigravity-with-icon-card')) {
   customElements.define('antigravity-with-icon-card', AntigravityWithIconCard);
 }
+
 

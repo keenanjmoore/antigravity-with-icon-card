@@ -99,10 +99,12 @@ export type SubButtonType =
 export interface FadeCalculationResult {
   enabled: boolean;
   activeFade: boolean;
-  currentColor: RGBTuple;
-  colorHex: string;
+  currentColor: RGBTuple | string;
+  colorHex?: string;
   progressPct: number;
+  remainingSeconds?: number;
   currentStage: number;
+  stageLabel?: string;
 }
 
 export interface SubButtonConfig {

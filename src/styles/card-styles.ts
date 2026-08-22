@@ -1,11 +1,15 @@
 /**
- * Static CSS Stylesheet for Antigravity With-Icon Cards
- * Encapsulates core layout, icon shapes & animations, Google Material 3 sliders, decay indicators, and touch feedback.
+ * Static CSS Stylesheet for Antigravity Cards
+ * Encapsulates core layout, Google Material 3 sliders, decay animations, themes, and touch feedback.
  */
 
 import { css, CSSResult } from 'lit';
 
 export const antigravityCardStyles: CSSResult = css`
+  :host {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+  }
   :host([hidden]),
   :host([offscreen]) *,
   :host([offscreen]) .anim-spin,
@@ -38,6 +42,9 @@ export const antigravityCardStyles: CSSResult = css`
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+  }
+  :host([hidden]) {
+    display: none !important;
   }
   input[type="range"] {
     touch-action: pan-y;
@@ -192,10 +199,6 @@ export const antigravityCardStyles: CSSResult = css`
     border: 1px solid #ff007f !important;
     box-shadow: 0 0 15px rgba(255, 0, 127, 0.35), inset 0 0 15px rgba(0, 255, 255, 0.15) !important;
   }
-  .theme-retro_synth .icon-container {
-    border: 1px solid #00ffff !important;
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5) !important;
-  }
 
   /* --- HOVER EFFECTS --- */
   .hover-lift:hover {
@@ -294,101 +297,8 @@ export const antigravityCardStyles: CSSResult = css`
     gap: var(--ag-slider-spacing, 4px);
   }
 
-  /* --- ICON & SHAPES --- */
-  .icon-container {
-    display: flex; align-items: center; justify-content: center;
-    color: var(--primary-text-color);
-    transition: transform 0.3s ease, color 0.3s ease, background-color 0.3s ease;
-    flex-shrink: 0;
-    position: relative;
-    margin: var(--ag-icon-margin, 0px);
-    padding: var(--ag-icon-padding, 0px);
-    transform: translateZ(0);
-  }
-  .icon-container:hover, .icon-container:active {
-    will-change: transform, color, background-color;
-  }
-  .icon-container[active] { color: var(--text-primary-color); }
-
-  .shape-circle { border-radius: 50%; }
-  .shape-rounded { border-radius: 12px; }
-  .shape-square { border-radius: 4px; }
-  .shape-none { background: transparent !important; box-shadow: none !important; }
-
-  .entity-picture {
-    object-fit: cover;
-  }
-
-  /* --- ICON ANIMATIONS --- */
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-  .icon-container.anim-spin[active] ha-state-icon,
-  .icon-container.anim-spin[active] img {
-    will-change: transform;
-    animation: spin 2.5s linear infinite;
-  }
-
-  @keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
-  }
-  .icon-container.anim-bounce[active] {
-    will-change: transform;
-    animation: bounce 1.2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%   { transform: scale(1);    box-shadow: 0 0 0 0   currentColor; }
-    70%  { transform: scale(1.05); box-shadow: 0 0 0 10px transparent; }
-    100% { transform: scale(1);    box-shadow: 0 0 0 0   transparent; }
-  }
-  .icon-container.pulse[active],
-  .icon-container.anim-pulse[active] {
-    animation: pulse 2s infinite;
-  }
-
-  /* Motion Sensor Radar Ripple Effect */
-  @keyframes motion-ripple {
-    0% {
-      transform: scale(0.95);
-      box-shadow: 0 0 0 0 rgba(var(--ag-glow-color, 255, 152, 0), 0.7);
-    }
-    70% {
-      transform: scale(1.1);
-      box-shadow: 0 0 0 12px rgba(var(--ag-glow-color, 255, 152, 0), 0);
-    }
-    100% {
-      transform: scale(0.95);
-      box-shadow: 0 0 0 0 rgba(var(--ag-glow-color, 255, 152, 0), 0);
-    }
-  }
-  .motion-active .icon-container {
-    animation: motion-ripple 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1) !important;
-  }
   .door-open {
     border-color: rgba(255, 152, 0, 0.5) !important;
-  }
-
-  /* --- STATUS BADGE (MUSHROOM STYLE) --- */
-  .badge {
-    position: absolute;
-    bottom: var(--ag-badge-offset, -2px);
-    right: var(--ag-badge-offset, -2px);
-    width: var(--ag-badge-size, 16px);
-    height: var(--ag-badge-size, 16px);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid var(--card-background-color, #fff);
-    color: var(--text-primary-color, #fff);
-  }
-  .badge ha-icon {
-    --mdc-icon-size: calc(var(--ag-badge-size, 16px) * 0.625);
-    width: calc(var(--ag-badge-size, 16px) * 0.625);
-    height: calc(var(--ag-badge-size, 16px) * 0.625);
   }
 
   /* --- TEXT & MARQUEE SCROLLING --- */
@@ -550,7 +460,6 @@ export const antigravityCardStyles: CSSResult = css`
     z-index: 2;
     pointer-events: none;
   }
-  .slider-style-full .icon-container,
   .slider-style-full .collapsible-wrapper {
     position: relative !important;
     z-index: 2 !important;
