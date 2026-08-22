@@ -90,6 +90,7 @@ export class StyleBuilder {
       config.card_layout,
       config.full_slider_opacity,
       config.text_color_mode,
+      config.hover_effect,
     ].join('|');
 
     if (this._computedStylesCache.has(cacheKey)) {
@@ -193,6 +194,7 @@ export class StyleBuilder {
       themeDef.cssClass,
       `layout-${config.layout || 'default'}`,
       config.card_layout === 'large' ? 'card-large' : '',
+      `hover-${config.hover_effect ?? 'glow'}`,
       `slider-style-${config.slider_style ?? 'circle'}`,
       config.text_color_mode === 'inverse' ? 'text-color-mode-inverse' : '',
     ].filter(Boolean).join(' ');

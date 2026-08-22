@@ -1015,7 +1015,8 @@ const Tt = {
       e.layout,
       e.card_layout,
       e.full_slider_opacity,
-      e.text_color_mode
+      e.text_color_mode,
+      e.hover_effect
     ].join("|");
     if (this._computedStylesCache.has(i))
       return this._computedStylesCache.get(i);
@@ -1058,6 +1059,7 @@ const Tt = {
       ie.cssClass,
       `layout-${e.layout || "default"}`,
       e.card_layout === "large" ? "card-large" : "",
+      `hover-${e.hover_effect ?? "glow"}`,
       `slider-style-${e.slider_style ?? "circle"}`,
       e.text_color_mode === "inverse" ? "text-color-mode-inverse" : ""
     ].filter(Boolean).join(" "), re = Number(e.text_offset_x) || -28, Re = Number(e.text_offset_y) || 2, L = `transform: translate(${re}px, ${Re}px);`, O = Number(e.primary_text_start_offset ?? e.primary_text_offset_x) || 8, he = Number(e.primary_text_end_offset) || 250, H = Number(e.primary_text_offset_y) || 0, pe = O !== 0 || H !== 0 ? `transform: translate(${O}px, ${H}px);` : "", oe = O !== 0 || he !== 0 ? `margin-left: ${O}px; margin-right: ${he}px;` : "", J = `${pe} ${oe}`.trim(), Z = Number(e.secondary_text_start_offset ?? e.secondary_text_offset_x) || 8, B = Number(e.secondary_text_end_offset) || 250, _e = Number(e.secondary_text_offset_y) || 0, He = Z !== 0 || _e !== 0 ? `transform: translate(${Z}px, ${_e}px);` : "", Be = Z !== 0 || B !== 0 ? `margin-left: ${Z}px; margin-right: ${B}px;` : "", Oe = `${He} ${Be}`.trim(), ze = Number(e.features_offset_x) || 0, Fe = Number(e.features_offset_y) || 0, Ie = ze !== 0 || Fe !== 0 ? `transform: translate(${ze}px, ${Fe}px);` : "", Q = Number(e.slider_start_offset) || 0, I = Number(e.slider_end_offset) || 0, U = [
