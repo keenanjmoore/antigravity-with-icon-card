@@ -35,6 +35,7 @@ export type InfoType =
 
 // Supported Theme Presets
 export type ThemePreset =
+  | 'default'
   | 'glassmorphism'
   | 'neumorphism'
   | 'cyberpunk'
@@ -351,7 +352,7 @@ export const DEFAULT_CARD_CONFIG: Partial<AntigravityCardConfig> = {
   hide_slider_when_off: false,
   show_slider_percent: true,
   color_type: "card",
-  theme_preset: "glassmorphism",
+  theme_preset: "default",
   glassmorphism_blur: 16,
   glassmorphism_opacity: 0.25,
   fade_transition_enabled: false,

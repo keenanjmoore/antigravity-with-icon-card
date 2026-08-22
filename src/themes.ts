@@ -13,7 +13,13 @@ export interface ThemeDefinition {
   generateStyles: (config: AntigravityCardConfig) => string;
 }
 
-export const THEME_PRESETS: Record<ThemePreset, ThemeDefinition> = {
+export const THEME_PRESETS: Record<string, ThemeDefinition> = {
+  default: {
+    name: 'default' as any,
+    label: 'Default (Card Colors)',
+    cssClass: 'theme-default',
+    generateStyles: () => '',
+  },
   glassmorphism: {
     name: 'glassmorphism',
     label: 'Frosted Glassmorphism',
@@ -150,54 +156,54 @@ export function getThemeStaticStyles(): CSSResult {
     .theme-glassmorphism {
       backdrop-filter: var(--theme-backdrop-filter, blur(16px));
       -webkit-backdrop-filter: var(--theme-backdrop-filter, blur(16px));
-      background: var(--theme-background, rgba(255, 255, 255, 0.25)) !important;
-      border: var(--theme-border, 1px solid rgba(255, 255, 255, 0.2)) !important;
-      box-shadow: var(--theme-box-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.2)) !important;
+      background: var(--theme-background, rgba(255, 255, 255, 0.25));
+      border: var(--theme-border, 1px solid rgba(255, 255, 255, 0.2));
+      box-shadow: var(--theme-box-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.2));
     }
     .theme-neumorphism {
-      background: var(--theme-background, #e0e5ec) !important;
-      box-shadow: var(--theme-box-shadow) !important;
-      border: none !important;
+      background: var(--theme-background, #e0e5ec);
+      box-shadow: var(--theme-box-shadow);
+      border: none;
     }
     .theme-cyberpunk {
-      background: var(--theme-background, #0d0f18) !important;
-      border: var(--theme-border, 2px solid #00f0ff) !important;
-      box-shadow: var(--theme-box-shadow) !important;
+      background: var(--theme-background, #0d0f18);
+      border: var(--theme-border, 2px solid #00f0ff);
+      box-shadow: var(--theme-box-shadow);
     }
     .theme-aurora {
-      background: var(--theme-background) !important;
+      background: var(--theme-background);
       backdrop-filter: var(--theme-backdrop-filter, blur(20px));
       -webkit-backdrop-filter: var(--theme-backdrop-filter, blur(20px));
-      border: var(--theme-border) !important;
+      border: var(--theme-border);
     }
     .theme-oled {
-      background: #000000 !important;
-      border: var(--theme-border, 1px solid #1f1f1f) !important;
-      box-shadow: none !important;
+      background: #000000;
+      border: var(--theme-border, 1px solid #1f1f1f);
+      box-shadow: none;
     }
     .theme-sunset {
-      background: var(--theme-background) !important;
-      box-shadow: var(--theme-box-shadow) !important;
-      border: none !important;
+      background: var(--theme-background);
+      box-shadow: var(--theme-box-shadow);
+      border: none;
     }
     .theme-flat {
-      background: var(--theme-background, #242424) !important;
-      border: var(--theme-border) !important;
-      box-shadow: none !important;
+      background: var(--theme-background, #242424);
+      border: var(--theme-border);
+      box-shadow: none;
     }
     .theme-material-you {
-      background: var(--theme-background) !important;
-      border-radius: var(--ha-card-border-radius, 28px) !important;
+      background: var(--theme-background);
+      border-radius: var(--ha-card-border-radius, 28px);
     }
     .theme-retro-synth {
-      background: var(--theme-background) !important;
-      border: var(--theme-border) !important;
-      box-shadow: var(--theme-box-shadow) !important;
+      background: var(--theme-background);
+      border: var(--theme-border);
+      box-shadow: var(--theme-box-shadow);
     }
     .theme-minimal {
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
+      background: transparent;
+      border: none;
+      box-shadow: none;
     }
   `;
 }

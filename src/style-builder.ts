@@ -151,8 +151,8 @@ export class StyleBuilder {
     const fullSliderOpacity = config.full_slider_opacity !== undefined ? `--ag-full-slider-opacity: ${config.full_slider_opacity / 100};` : '';
 
     // Theme preset resolution with fallback safety (Fix #8)
-    const rawTheme = config.theme_preset || 'glassmorphism';
-    const themeDef = THEME_PRESETS[rawTheme as ThemePreset] || THEME_PRESETS.glassmorphism;
+    const rawTheme = (config.theme_preset || 'default') as ThemePreset;
+    const themeDef = THEME_PRESETS[rawTheme] || THEME_PRESETS.default;
     const themeStyles = themeDef.generateStyles(config);
 
     const staticCardStyles = [
