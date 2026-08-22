@@ -1111,7 +1111,7 @@ export class AntigravityWithIconCard extends LitElement {
 
     const c3Rgb = cfg?.c3Rgb ?? (parseColorToRgb(this.config.fade_stage_3_color) || finalRgb);
 
-    const lastChangedDate = this._parseDate(stateObj.last_changed || stateObj.last_updated);
+    const lastChangedDate = this._parseDate(stateObj.attributes?.last_triggered || stateObj.last_changed || stateObj.last_updated);
     if (!lastChangedDate) {
       return DISABLED_FADE_RESULT;
     }
