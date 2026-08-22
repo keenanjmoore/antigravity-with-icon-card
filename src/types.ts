@@ -174,7 +174,7 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
 
   // Sub-Buttons (1-4)
   sub_button_1_entity?: string;
-  sub_button_1_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'vol_up' | 'vol_down' | 'mute' | 'source' | 'sound_mode' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'swing_mode' | 'climate_preset' | 'clean' | 'dock' | 'locate' | 'vacuum_fan_speed' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'input_select' | 'counter_inc' | 'counter_dec' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
+  sub_button_1_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'vol_up' | 'vol_down' | 'mute' | 'source' | 'sound_mode' | 'shuffle' | 'repeat' | 'chime' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'cover_preset' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'fan_oscillate' | 'fan_direction' | 'swing_mode' | 'climate_preset' | 'temp_up' | 'temp_down' | 'clean' | 'dock' | 'locate' | 'vacuum_fan_speed' | 'siren_toggle' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'humidifier_mode' | 'input_select' | 'counter_inc' | 'counter_dec' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
   sub_button_1_icon?: string;
   sub_button_1_color?: string;
   sub_button_1_show_background?: boolean;
@@ -185,7 +185,7 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
   sub_button_1_double_tap_action?: ActionConfig;
 
   sub_button_2_entity?: string;
-  sub_button_2_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'vol_up' | 'vol_down' | 'mute' | 'source' | 'sound_mode' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'swing_mode' | 'climate_preset' | 'clean' | 'dock' | 'locate' | 'vacuum_fan_speed' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'input_select' | 'counter_inc' | 'counter_dec' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
+  sub_button_2_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'vol_up' | 'vol_down' | 'mute' | 'source' | 'sound_mode' | 'shuffle' | 'repeat' | 'chime' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'cover_preset' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'fan_oscillate' | 'fan_direction' | 'swing_mode' | 'climate_preset' | 'temp_up' | 'temp_down' | 'clean' | 'dock' | 'locate' | 'vacuum_fan_speed' | 'siren_toggle' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'humidifier_mode' | 'input_select' | 'counter_inc' | 'counter_dec' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
   sub_button_2_icon?: string;
   sub_button_2_color?: string;
   sub_button_2_show_background?: boolean;
@@ -196,7 +196,7 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
   sub_button_2_double_tap_action?: ActionConfig;
 
   sub_button_3_entity?: string;
-  sub_button_3_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'vol_up' | 'vol_down' | 'mute' | 'source' | 'sound_mode' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'swing_mode' | 'climate_preset' | 'clean' | 'dock' | 'locate' | 'vacuum_fan_speed' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'input_select' | 'counter_inc' | 'counter_dec' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
+  sub_button_3_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'vol_up' | 'vol_down' | 'mute' | 'source' | 'sound_mode' | 'shuffle' | 'repeat' | 'chime' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'cover_preset' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'fan_oscillate' | 'fan_direction' | 'swing_mode' | 'climate_preset' | 'temp_up' | 'temp_down' | 'clean' | 'dock' | 'locate' | 'vacuum_fan_speed' | 'siren_toggle' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'humidifier_mode' | 'input_select' | 'counter_inc' | 'counter_dec' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
   sub_button_3_icon?: string;
   sub_button_3_color?: string;
   sub_button_3_show_background?: boolean;
@@ -207,7 +207,7 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
   sub_button_3_double_tap_action?: ActionConfig;
 
   sub_button_4_entity?: string;
-  sub_button_4_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'vol_up' | 'vol_down' | 'mute' | 'source' | 'sound_mode' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'swing_mode' | 'climate_preset' | 'clean' | 'dock' | 'locate' | 'vacuum_fan_speed' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'input_select' | 'counter_inc' | 'counter_dec' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
+  sub_button_4_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'vol_up' | 'vol_down' | 'mute' | 'source' | 'sound_mode' | 'shuffle' | 'repeat' | 'chime' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'cover_preset' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'fan_oscillate' | 'fan_direction' | 'swing_mode' | 'climate_preset' | 'temp_up' | 'temp_down' | 'clean' | 'dock' | 'locate' | 'vacuum_fan_speed' | 'siren_toggle' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'humidifier_mode' | 'input_select' | 'counter_inc' | 'counter_dec' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
   sub_button_4_icon?: string;
   sub_button_4_color?: string;
   sub_button_4_show_background?: boolean;
@@ -216,6 +216,13 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
   sub_button_4_tap_action?: ActionConfig;
   sub_button_4_hold_action?: ActionConfig;
   sub_button_4_double_tap_action?: ActionConfig;
+
+  // Custom Presets, Gradients & Advanced Options
+  color_presets?: string[];
+  show_cover_tilt?: boolean;
+  show_dual_climate_sliders?: boolean;
+  active_border_gradient?: boolean;
+  use_icon_light_color?: boolean;
 
   // Custom Presets & Advanced Sliders
   color_presets?: string[];

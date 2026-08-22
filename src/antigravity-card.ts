@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "130";
+export const CARD_VERSION = "131";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -327,6 +327,9 @@ function safeForwardHaptic(type: any, enabled = true) {
   if (!enabled || typeof window === 'undefined') return;
   try {
     forwardHaptic(type);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('haptic', { detail: type, bubbles: true, composed: true }));
+    }
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator && typeof navigator.vibrate === 'function') {
       let pattern: number | number[] = 6;
       if (type === 'heavy') pattern = 20;
@@ -344,6 +347,9 @@ function safeForwardHaptic(type: any, enabled = true) {
 // ---- Color Parsing Cache (O(1) Lookup, LRU Eviction) ----
 const COLOR_CACHE = new Map<string, string>();
 const COLOR_CACHE_MAX = 250;
+
+const DATE_PARSE_CACHE = new Map<string, Date>();
+const DATE_PARSE_CACHE_MAX = 128;
 function resolveColorCached(colorStr: string | undefined): string {
   if (!colorStr) return '';
   const cached = COLOR_CACHE.get(colorStr);
@@ -1123,9 +1129,17 @@ export class AntigravityWithIconCard extends LitElement {
       return isNaN(d.getTime()) ? null : d;
     }
     if (typeof dateInput === 'string') {
+      const cached = DATE_PARSE_CACHE.get(dateInput);
+      if (cached) return cached;
       const parsedMs = Date.parse(dateInput);
       if (!isNaN(parsedMs)) {
-        return new Date(parsedMs);
+        const res = new Date(parsedMs);
+        if (DATE_PARSE_CACHE.size >= DATE_PARSE_CACHE_MAX) {
+          const firstKey = DATE_PARSE_CACHE.keys().next().value;
+          if (firstKey !== undefined) DATE_PARSE_CACHE.delete(firstKey);
+        }
+        DATE_PARSE_CACHE.set(dateInput, res);
+        return res;
       }
       let clean = dateInput.trim();
       if (clean.includes(' ') && !clean.includes('T')) {
@@ -1141,7 +1155,15 @@ export class AntigravityWithIconCard extends LitElement {
       } else {
         d = new Date(clean);
       }
-      return isNaN(d.getTime()) ? null : d;
+      const res = isNaN(d.getTime()) ? null : d;
+      if (res) {
+        if (DATE_PARSE_CACHE.size >= DATE_PARSE_CACHE_MAX) {
+          const firstKey = DATE_PARSE_CACHE.keys().next().value;
+          if (firstKey !== undefined) DATE_PARSE_CACHE.delete(firstKey);
+        }
+        DATE_PARSE_CACHE.set(dateInput, res);
+      }
+      return res;
     }
     return null;
   }
@@ -1287,12 +1309,16 @@ export class AntigravityWithIconCard extends LitElement {
           return temp !== undefined ? `${temp}${uom} • ${cond}` : cond;
         }
 
-        // 5. Climate Domain Preset & Action Status
+        // 5. Climate Domain Preset, Action & Dual Temperature Status
         if (domain === 'climate') {
           const mode = stateObj.state || '';
+          const curTemp = stateObj.attributes?.current_temperature;
+          const targetTemp = stateObj.attributes?.temperature ?? stateObj.attributes?.target_temp_high;
+          const uom = stateObj.attributes?.unit_of_measurement || this.hass.config?.unit_system?.temperature || '°';
           const preset = stateObj.attributes?.preset_mode;
           const act = stateObj.attributes?.hvac_action;
-          const extras = [act, preset].filter(Boolean).join(' • ');
+          const tempSummary = (curTemp !== undefined && targetTemp !== undefined) ? `${curTemp}${uom} → ${targetTemp}${uom}` : (targetTemp !== undefined ? `${targetTemp}${uom}` : '');
+          const extras = [tempSummary, act, preset].filter(Boolean).join(' • ');
           return extras ? `${mode} (${extras})` : mode;
         }
 
@@ -3025,6 +3051,119 @@ export class AntigravityWithIconCard extends LitElement {
           };
           break;
         }
+        case 'shuffle': {
+          const isShuffle = stateObj?.attributes?.shuffle === true;
+          subIsActive = isShuffle;
+          if (!subIcon) subIcon = isShuffle ? 'mdi:shuffle' : 'mdi:shuffle-disabled';
+          subTitle = isShuffle ? 'Shuffle: On' : 'Shuffle: Off';
+          defaultAction = () => {
+            this.hass?.callService('media_player', 'shuffle_set', { entity_id: entityId || this.config.entity, shuffle: !isShuffle });
+          };
+          break;
+        }
+        case 'repeat': {
+          const curRepeat = stateObj?.attributes?.repeat || 'off';
+          const repeats = ['off', 'all', 'one'];
+          const nextRepeat = repeats[(repeats.indexOf(curRepeat) + 1) % repeats.length] || 'off';
+          subIsActive = curRepeat !== 'off';
+          if (!subIcon) subIcon = curRepeat === 'one' ? 'mdi:repeat-once' : (curRepeat === 'all' ? 'mdi:repeat' : 'mdi:repeat-off');
+          subTitle = `Repeat: ${curRepeat} -> ${nextRepeat}`;
+          if (!subLabel) subLabel = curRepeat;
+          defaultAction = () => {
+            this.hass?.callService('media_player', 'repeat_set', { entity_id: entityId || this.config.entity, repeat: nextRepeat });
+          };
+          break;
+        }
+        case 'chime': {
+          if (!subIcon) subIcon = 'mdi:bell-ring-outline';
+          subTitle = 'Play Chime';
+          defaultAction = () => {
+            this.hass?.callService('chime_tts', 'say', { entity_id: entityId || this.config.entity, message: 'ding-dong' }).catch(() => {
+              this.hass?.callService('media_player', 'media_play', { entity_id: entityId || this.config.entity });
+            });
+          };
+          break;
+        }
+        case 'cover_preset': {
+          if (!subIcon) subIcon = 'mdi:window-shutter';
+          subTitle = 'Go to Shading Position (50%)';
+          defaultAction = () => {
+            this.hass?.callService('cover', 'set_cover_position', { entity_id: entityId || this.config.entity, position: 50 });
+          };
+          break;
+        }
+        case 'temp_up': {
+          const isFahrenheit = this.hass?.config?.unit_system?.temperature === '°F' || this.hass?.config?.unit_system?.temperature === 'F';
+          const step = isFahrenheit ? 1 : 0.5;
+          const curTemp = Number(stateObj?.attributes?.temperature ?? stateObj?.attributes?.target_temp_high ?? 20);
+          const maxTemp = Number(stateObj?.attributes?.max_temp ?? 35);
+          const nextTemp = Math.min(maxTemp, curTemp + step);
+          if (!subIcon) subIcon = 'mdi:thermometer-chevron-up';
+          subTitle = `Temperature +${step}°`;
+          if (!subLabel) subLabel = `+${step}°`;
+          defaultAction = () => {
+            this.hass?.callService('climate', 'set_temperature', { entity_id: entityId || this.config.entity, temperature: nextTemp });
+          };
+          break;
+        }
+        case 'temp_down': {
+          const isFahrenheit = this.hass?.config?.unit_system?.temperature === '°F' || this.hass?.config?.unit_system?.temperature === 'F';
+          const step = isFahrenheit ? 1 : 0.5;
+          const curTemp = Number(stateObj?.attributes?.temperature ?? stateObj?.attributes?.target_temp_low ?? 20);
+          const minTemp = Number(stateObj?.attributes?.min_temp ?? 10);
+          const nextTemp = Math.max(minTemp, curTemp - step);
+          if (!subIcon) subIcon = 'mdi:thermometer-chevron-down';
+          subTitle = `Temperature -${step}°`;
+          if (!subLabel) subLabel = `-${step}°`;
+          defaultAction = () => {
+            this.hass?.callService('climate', 'set_temperature', { entity_id: entityId || this.config.entity, temperature: nextTemp });
+          };
+          break;
+        }
+        case 'fan_oscillate': {
+          const isOsc = stateObj?.attributes?.oscillating === true;
+          subIsActive = isOsc;
+          if (!subIcon) subIcon = isOsc ? 'mdi:arrow-oscillating' : 'mdi:fan-off';
+          subTitle = isOsc ? 'Stop Oscillation' : 'Start Oscillation';
+          defaultAction = () => {
+            this.hass?.callService('fan', 'oscillate', { entity_id: entityId || this.config.entity, oscillating: !isOsc });
+          };
+          break;
+        }
+        case 'fan_direction': {
+          const curDir = stateObj?.attributes?.direction || 'forward';
+          const nextDir = curDir === 'forward' ? 'reverse' : 'forward';
+          subIsActive = curDir === 'reverse';
+          if (!subIcon) subIcon = curDir === 'reverse' ? 'mdi:rotate-left' : 'mdi:rotate-right';
+          subTitle = `Direction: ${curDir} -> ${nextDir}`;
+          if (!subLabel) subLabel = curDir;
+          defaultAction = () => {
+            this.hass?.callService('fan', 'set_direction', { entity_id: entityId || this.config.entity, direction: nextDir });
+          };
+          break;
+        }
+        case 'humidifier_mode': {
+          const curMode = stateObj?.attributes?.mode || stateObj?.state || 'auto';
+          const modes: string[] = stateObj?.attributes?.available_modes || ['auto', 'eco', 'boost', 'sleep'];
+          const nextMode = modes[(modes.indexOf(curMode) + 1) % modes.length] || 'auto';
+          if (!subIcon) subIcon = 'mdi:water-sync';
+          subTitle = `Humidifier Mode: ${curMode} -> ${nextMode}`;
+          if (!subLabel) subLabel = curMode;
+          defaultAction = () => {
+            this.hass?.callService('humidifier', 'set_mode', { entity_id: entityId || this.config.entity, mode: nextMode });
+          };
+          break;
+        }
+        case 'siren_toggle': {
+          const isOn = stateObj?.state === 'on';
+          subIsActive = isOn;
+          if (!subIcon) subIcon = isOn ? 'mdi:bullhorn' : 'mdi:bullhorn-outline';
+          subTitle = isOn ? 'Turn Off Siren' : 'Trigger Siren';
+          defaultAction = () => {
+            this.hass?.callService('siren', 'toggle', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
         case 'open_close': {
           const isDoorOpen = stateObj?.state === 'open' || stateObj?.state === 'on' || (stateObj?.attributes?.current_position !== undefined && stateObj.attributes.current_position > 0);
           subIsActive = isDoorOpen;
@@ -3499,11 +3638,18 @@ export class AntigravityWithIconCard extends LitElement {
       .sub-buttons-container {
         scrollbar-width: none;
         -ms-overflow-style: none;
+        contain: layout style;
       }
       .color-temp-chips::-webkit-scrollbar,
       .color-swatch-chips::-webkit-scrollbar,
       .sub-buttons-container::-webkit-scrollbar {
         display: none;
+      }
+      .active-border-gradient {
+        border: 2px solid transparent !important;
+        background-image: linear-gradient(var(--card-background-color, #1e1e1e), var(--card-background-color, #1e1e1e)), linear-gradient(135deg, #6200ea, #00e5ff, #76ff03) !important;
+        background-origin: border-box !important;
+        background-clip: padding-box, border-box !important;
       }
       .color-swatch-chip[active] {
         outline: 2px solid #ffffff;
