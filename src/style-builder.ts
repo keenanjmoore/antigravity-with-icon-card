@@ -1,9 +1,10 @@
 /**
  * StyleBuilder Engine for Antigravity Cards
- * Systematically constructs scoped CSS variables, dynamic typography, offsets, and theme classes.
+ * Systematically constructs scoped CSS variables, dynamic typography, offsets, theme classes,
+ * with style memoization and custom styles CSS sanitization.
  */
 
-import { AntigravityCardConfig } from './types';
+import { AntigravityCardConfig, ThemePreset } from './types';
 import { THEME_PRESETS } from './themes';
 
 export interface ComputedCardStyles {
@@ -22,10 +23,79 @@ export interface ComputedCardStyles {
 }
 
 export class StyleBuilder {
+  private static _computedStylesCache = new Map<string, ComputedCardStyles>();
+
   /**
-   * Precompute static style strings on configuration changes to eliminate render allocations.
+   * Sanitize custom styles string to reject tag breakouts and script tags.
+   */
+  public static sanitizeCustomStyles(css?: string): string {
+    if (!css || typeof css !== 'string') return '';
+    // Disallow closing style tags, script elements, and HTML tags
+    if (/<\/?(script|style|iframe|object|embed)/i.test(css)) {
+      console.warn('[Antigravity] custom_styles contains invalid HTML tags. Ignored for security.');
+      return '';
+    }
+    return css;
+  }
+
+  /**
+   * Precompute static style strings on configuration changes with memoization.
    */
   public static computeStaticStyles(config: AntigravityCardConfig): ComputedCardStyles {
+    if (!config) {
+      return {
+        staticCardStyles: '',
+        staticCardClasses: 'ha-card',
+        textOffsetStyle: '',
+        primaryTextOffsetStyle: '',
+        secondaryTextOffsetStyle: '',
+        featuresOffsetStyle: '',
+        mainSliderMarginOffsets: '',
+        colorTempMarginOffsets: '',
+        colorHueMarginOffsets: '',
+        textBoxWidth: 'width: 100%; max-width: 100%;',
+        primaryTextStyle: '',
+        secondaryTextStyle: '',
+      };
+    }
+
+    // Fast memoization hash based on layout, spacing, colors, and offsets
+    const cacheKey = [
+      config.theme_preset,
+      config.card_padding,
+      config.card_padding_vertical,
+      config.card_padding_horizontal,
+      config.card_margin,
+      config.border_radius,
+      config.slider_style,
+      config.slider_height,
+      config.slider_border_radius,
+      config.content_spacing,
+      config.text_spacing,
+      config.features_margin,
+      config.sub_button_spacing,
+      config.sub_button_padding,
+      config.text_offset_x,
+      config.text_offset_y,
+      config.primary_text_start_offset,
+      config.primary_text_end_offset,
+      config.secondary_text_start_offset,
+      config.secondary_text_end_offset,
+      config.font_size_primary,
+      config.font_size_secondary,
+      config.font_weight_primary,
+      config.letter_spacing,
+      config.line_height,
+      config.layout,
+      config.card_layout,
+      config.full_slider_opacity,
+      config.text_color_mode,
+    ].join('|');
+
+    if (this._computedStylesCache.has(cacheKey)) {
+      return this._computedStylesCache.get(cacheKey)!;
+    }
+
     const cardPaddingVert = config.card_padding_vertical ?? config.card_padding ?? 0;
     const cardPaddingHoriz = config.card_padding_horizontal ?? config.card_padding ?? 15;
 
@@ -80,8 +150,9 @@ export class StyleBuilder {
     const scrollSpeedVar = config.text_scrolling_speed ? `--ag-scroll-speed: ${config.text_scrolling_speed}s;` : '';
     const fullSliderOpacity = config.full_slider_opacity !== undefined ? `--ag-full-slider-opacity: ${config.full_slider_opacity / 100};` : '';
 
-    const themeName = config.theme_preset ?? 'glassmorphism';
-    const themeDef = THEME_PRESETS[themeName] || THEME_PRESETS.glassmorphism;
+    // Theme preset resolution with fallback safety (Fix #8)
+    const rawTheme = config.theme_preset || 'glassmorphism';
+    const themeDef = THEME_PRESETS[rawTheme as ThemePreset] || THEME_PRESETS.glassmorphism;
     const themeStyles = themeDef.generateStyles(config);
 
     const staticCardStyles = [
@@ -187,7 +258,7 @@ export class StyleBuilder {
     const secondaryTransform = `text-transform: ${config.text_transform_secondary ?? 'capitalize'};`;
     const secondaryTextStyle = `${secondaryFamily} ${secondarySize} ${secondaryWeight} ${secondaryTransform} ${letterSpacingStyle} ${lineHeightStyle}`.trim();
 
-    return {
+    const result: ComputedCardStyles = {
       staticCardStyles,
       staticCardClasses,
       textOffsetStyle,
@@ -201,5 +272,8 @@ export class StyleBuilder {
       primaryTextStyle,
       secondaryTextStyle,
     };
+
+    this._computedStylesCache.set(cacheKey, result);
+    return result;
   }
 }

@@ -1,10 +1,11 @@
-import { LitElement, html, css, PropertyValues, nothing, TemplateResult } from 'lit';
+import { LitElement, html, css, unsafeCSS, PropertyValues, nothing, TemplateResult } from 'lit';
 import { customElement, property, state, eventOptions } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { handleAction, forwardHaptic } from 'custom-card-helpers';
 import type { AntigravityCardConfig } from './types';
 import { DEFAULT_CARD_CONFIG } from './types';
+import { StyleBuilder } from './style-builder';
 import { memoryTracker } from './memory-tracker';
 import { powerHelper } from './power-helper';
 import { cleanupWebGL } from './gpu-utils';
@@ -2415,11 +2416,11 @@ export class AntigravityWithIconCard extends LitElement {
     const hasMainSlider = showLightSlider || showCoverSlider || showFanSlider || showHumidifierSlider || showMediaSlider || showNumberSlider || showClimateSlider;
     const hasSecondarySliders = showColorTemp || showColorSlider || showColorWheel;
     const hasCollapsible = (!isInline && hasSecondarySliders) || subButtons.length > 0;
-
     const decayPos = this.config.decay_slider_position ?? 'bottom';
+    const sanitizedStyles = StyleBuilder.sanitizeCustomStyles(this.config.custom_styles);
 
     return html`
-      ${this.config.custom_styles ? html`<style>${this.config.custom_styles}</style>` : nothing}
+      ${sanitizedStyles ? html`<style>${unsafeCSS(sanitizedStyles)}</style>` : nothing}
       <ha-card 
         class="${cardClasses}" 
         ?active=${isActive}
@@ -2937,10 +2938,10 @@ export class AntigravityWithIconCard extends LitElement {
                    const inputEl = e.target as HTMLInputElement;
                    requestAnimationFrame(() => {
                      inputEl.style.setProperty('--slider-pct', `${p}%`);
-                     const container = inputEl.closest('.sub-button-google-slider');
+                     const container = inputEl.closest('.sub-button-google-slider') as HTMLElement;
                      if (container) {
-                       (container as HTMLElement).style.setProperty('--slider-pct', `${p}%`);
-                       container.setAttribute('title', `Level: ${p}%`);
+                       container.style.setProperty('--slider-pct', `${p}%`);
+                       container.title = `Level: ${p}%`;
                        const pctEl = container.querySelector('.sub-slider-pct');
                        if (pctEl) pctEl.textContent = `${p}%`;
                      }

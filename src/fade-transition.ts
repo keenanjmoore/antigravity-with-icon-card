@@ -1,6 +1,6 @@
 /**
  * Multi-Stage Physical-Time Fade & Decay Transition Manager for Antigravity Cards
- * Computes 3-stage temporal decays directly from stateObj timestamps with live RGB interpolation.
+ * Computes 3-stage temporal decays with invalid timestamp guards and duration memoization.
  */
 
 import { AntigravityCardConfig, FadeCalculationResult, RGBTuple } from './types';
@@ -38,24 +38,42 @@ export class FadeTransitionManager {
   private _previousLiveRgb: RGBTuple | null = null;
   private _currentLiveRgb: RGBTuple | null = null;
   private _lastTrackedState: string | null = null;
+  private _cachedDurations: FadeStaticDurations | null = null;
+  private _lastFadeConfigHash: string | null = null;
 
   /**
    * Precompute static duration and color bounds on configuration update.
+   * Uses hashing to avoid re-parsing regexes when config is unchanged.
    */
   public precomputeDurations(config: AntigravityCardConfig): FadeStaticDurations | null {
-    if (!config?.fade_transition_enabled) return null;
+    if (!config?.fade_transition_enabled) {
+      this._cachedDurations = null;
+      this._lastFadeConfigHash = null;
+      return null;
+    }
+
+    const hash = `${config.fade_stage_1_duration}_${config.fade_stage_1_color}_${config.fade_stage_2_duration}_${config.fade_stage_2_color}_${config.fade_stage_3_duration}_${config.fade_stage_3_color}`;
+    if (hash === this._lastFadeConfigHash && this._cachedDurations) {
+      return this._cachedDurations;
+    }
 
     const d1 = Number(config.fade_stage_1_duration) || DEFAULT_FADE_STAGE_1_SECONDS;
     const d2 = Number(config.fade_stage_2_duration) || DEFAULT_FADE_STAGE_2_SECONDS;
     const d3 = Number(config.fade_stage_3_duration) || DEFAULT_FADE_STAGE_3_SECONDS;
     const totalDuration = d1 + d2 + d3;
-    if (totalDuration <= 0) return null;
+    if (totalDuration <= 0) {
+      this._cachedDurations = null;
+      this._lastFadeConfigHash = hash;
+      return null;
+    }
 
     const c1 = parseColorToRgb(config.fade_stage_1_color || DEFAULT_STAGE_1_COLOR) || [255, 152, 0];
     const c2 = parseColorToRgb(config.fade_stage_2_color || DEFAULT_STAGE_2_COLOR) || [205, 220, 57];
     const c3 = parseColorToRgb(config.fade_stage_3_color || DEFAULT_STAGE_3_COLOR) || [76, 175, 80];
 
-    return { d1, d2, d3, totalDuration, c1, c2, c3 };
+    this._cachedDurations = { d1, d2, d3, totalDuration, c1, c2, c3 };
+    this._lastFadeConfigHash = hash;
+    return this._cachedDurations;
   }
 
   /**
@@ -100,13 +118,18 @@ export class FadeTransitionManager {
     }
     this._lastTrackedState = stateObj.state;
 
-    // Parse timestamp
-    const tsStr = stateObj.attributes?.last_triggered || stateObj.last_changed || stateObj.last_updated;
+    // Parse and validate timestamp safely (Fix #1: null/empty string/invalid date check)
+    const rawTs = stateObj.attributes?.last_triggered || stateObj.last_changed || stateObj.last_updated;
+    const tsStr = (typeof rawTs === 'string' ? rawTs : '').trim();
     if (!tsStr) {
       return DISABLED_FADE_RESULT;
     }
 
     const tsDate = new Date(tsStr);
+    if (isNaN(tsDate.getTime())) {
+      return DISABLED_FADE_RESULT;
+    }
+
     const now = Date.now();
     const ageSeconds = Math.max(0, ((now - tsDate.getTime()) / 1000) | 0);
 
@@ -163,6 +186,8 @@ export class FadeTransitionManager {
     this._previousLiveRgb = null;
     this._currentLiveRgb = null;
     this._lastTrackedState = null;
+    this._cachedDurations = null;
+    this._lastFadeConfigHash = null;
   }
 }
 

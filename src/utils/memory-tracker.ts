@@ -1,6 +1,6 @@
 /**
  * Memory Tracker & Telemetry Helper for Antigravity Cards
- * Monitors JS Heap allocations, prevents timer retention leaks, and tracks instance lifecycle.
+ * Monitors JS Heap allocations, prevents instance retention leaks with WeakRefs, and tracks lifecycle.
  */
 
 export interface MemorySnapshot {
@@ -13,21 +13,28 @@ export interface MemorySnapshot {
 }
 
 class MemoryTrackerService {
-  private _activeCardInstances = new Set<any>();
+  private _activeCardInstances = new WeakSet<object>();
+  private _activeCount = 0;
   private _peakMemoryMB = 0;
   private _isLogging = false;
 
-  public registerCard(card: any): void {
-    this._activeCardInstances.add(card);
-    this._updatePeakMemory();
+  public registerCard(card: object): void {
+    if (card && !this._activeCardInstances.has(card)) {
+      this._activeCardInstances.add(card);
+      this._activeCount++;
+      this._updatePeakMemory();
+    }
   }
 
-  public unregisterCard(card: any): void {
-    this._activeCardInstances.delete(card);
+  public unregisterCard(card: object): void {
+    if (card && this._activeCardInstances.has(card)) {
+      this._activeCardInstances.delete(card);
+      this._activeCount = Math.max(0, this._activeCount - 1);
+    }
   }
 
   public getActiveCardCount(): number {
-    return this._activeCardInstances.size;
+    return this._activeCount;
   }
 
   private _updatePeakMemory(): void {
@@ -44,7 +51,7 @@ class MemoryTrackerService {
     this._updatePeakMemory();
     const memory = (performance as any)?.memory;
     const snapshot: MemorySnapshot = {
-      activeCardsCount: this._activeCardInstances.size,
+      activeCardsCount: this._activeCount,
       peakJSHeapSizeMB: this._peakMemoryMB > 0 ? this._peakMemoryMB : undefined,
       timestamp: Date.now(),
     };

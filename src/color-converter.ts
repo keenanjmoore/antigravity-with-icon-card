@@ -1,73 +1,101 @@
 /**
  * Color Converter & Parser Utility for Antigravity Cards
- * Features a 256-entry LRU cache, fast integer math, and support for Hex/RGB/RGBA/HSL/HSV formats.
+ * Features a true LRU cache with access tracking, pre-compiled regexes, fast bitwise math, and bounds safety.
  */
 
 import { RGBTuple } from './types';
 import { COLOR_CACHE_MAX_ENTRIES } from './constants';
 
+const RGB_RGBA_REGEX = /rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/i;
+const ARRAY_STR_REGEX = /^\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]$/;
+
 class ColorConverterService {
   private _cache = new Map<string, RGBTuple | null>();
+  private _cacheAccessTimes = new Map<string, number>();
 
   /**
    * Parse any CSS color string into an [r, g, b] integer tuple.
-   * Caches results in an LRU map to avoid repeated regex and DOM allocation.
+   * Uses a true LRU cache with access timestamp tracking.
    */
   public parseColorToRgb(colorStr: string): RGBTuple | null {
     if (!colorStr || typeof colorStr !== 'string') return null;
     const trimmed = colorStr.trim();
+    if (!trimmed) return null;
+
     if (this._cache.has(trimmed)) {
+      this._cacheAccessTimes.set(trimmed, Date.now());
       return this._cache.get(trimmed)!;
     }
 
     let result: RGBTuple | null = null;
 
     // 1. Hex Color (#RGB, #RGBA, #RRGGBB, #RRGGBBAA)
-    if (trimmed.startsWith('#')) {
+    if (trimmed.charCodeAt(0) === 35 /* '#' */) {
       const hex = trimmed.substring(1);
-      if (hex.length === 3 || hex.length === 4) {
-        result = [
-          parseInt(hex[0] + hex[0], 16),
-          parseInt(hex[1] + hex[1], 16),
-          parseInt(hex[2] + hex[2], 16),
-        ];
-      } else if (hex.length >= 6) {
-        result = [
-          parseInt(hex.substring(0, 2), 16),
-          parseInt(hex.substring(2, 4), 16),
-          parseInt(hex.substring(4, 6), 16),
-        ];
+      const len = hex.length;
+      if (len === 3 || len === 4) {
+        const r = parseInt(hex[0] + hex[0], 16);
+        const g = parseInt(hex[1] + hex[1], 16);
+        const b = parseInt(hex[2] + hex[2], 16);
+        if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+          result = [r, g, b];
+        }
+      } else if (len >= 6) {
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+          result = [r, g, b];
+        }
       }
     }
     // 2. rgb(...) / rgba(...)
     else if (trimmed.startsWith('rgb')) {
-      const match = trimmed.match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+      const match = trimmed.match(RGB_RGBA_REGEX);
+      if (match) {
+        const r = parseInt(match[1], 10);
+        const g = parseInt(match[2], 10);
+        const b = parseInt(match[3], 10);
+        if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+          result = [
+            Math.max(0, Math.min(255, r)),
+            Math.max(0, Math.min(255, g)),
+            Math.max(0, Math.min(255, b)),
+          ];
+        }
+      }
+    }
+    // 3. Array string e.g. "[255, 0, 0]"
+    else if (trimmed.charCodeAt(0) === 91 /* '[' */ && trimmed.charCodeAt(trimmed.length - 1) === 93 /* ']' */) {
+      const match = trimmed.match(ARRAY_STR_REGEX);
       if (match) {
         result = [
-          parseInt(match[1], 10),
-          parseInt(match[2], 10),
-          parseInt(match[3], 10),
+          Math.max(0, Math.min(255, parseInt(match[1], 10))),
+          Math.max(0, Math.min(255, parseInt(match[2], 10))),
+          Math.max(0, Math.min(255, parseInt(match[3], 10))),
         ];
       }
     }
-    // 3. Array formatted string e.g. "[255, 0, 0]"
-    else if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed) && parsed.length >= 3) {
-          result = [Number(parsed[0]) | 0, Number(parsed[1]) | 0, Number(parsed[2]) | 0];
+
+    // Evict least recently accessed if cache is full
+    if (this._cache.size >= COLOR_CACHE_MAX_ENTRIES) {
+      let lruKey: string | null = null;
+      let lruTime = Infinity;
+      for (const [key, time] of this._cacheAccessTimes) {
+        if (time < lruTime) {
+          lruTime = time;
+          lruKey = key;
         }
-      } catch {
-        // Ignore parse error
+      }
+      if (lruKey !== null) {
+        this._cache.delete(lruKey);
+        this._cacheAccessTimes.delete(lruKey);
       }
     }
 
-    // LRU Cache eviction
-    if (this._cache.size >= COLOR_CACHE_MAX_ENTRIES) {
-      const oldestKey = this._cache.keys().next().value;
-      if (oldestKey !== undefined) this._cache.delete(oldestKey);
-    }
+    const now = Date.now();
     this._cache.set(trimmed, result);
+    this._cacheAccessTimes.set(trimmed, now);
     return result;
   }
 
@@ -75,6 +103,7 @@ class ColorConverterService {
    * Convert an [r, g, b] tuple to a 6-character hex string (#rrggbb).
    */
   public rgbToHex(rgb: RGBTuple): string {
+    if (!rgb || isNaN(rgb[0]) || isNaN(rgb[1]) || isNaN(rgb[2])) return '#000000';
     const r = Math.max(0, Math.min(255, rgb[0] | 0)).toString(16).padStart(2, '0');
     const g = Math.max(0, Math.min(255, rgb[1] | 0)).toString(16).padStart(2, '0');
     const b = Math.max(0, Math.min(255, rgb[2] | 0)).toString(16).padStart(2, '0');
@@ -82,12 +111,14 @@ class ColorConverterService {
   }
 
   /**
-   * Extract Hue angle (0-360) from an RGB tuple.
+   * Extract Hue angle (0-360) from an RGB tuple with strict NaN and bounds guards.
    */
   public rgbToHue(r: number, g: number, b: number): number {
-    r /= 255;
-    g /= 255;
-    b /= 255;
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return 0;
+    r = Math.max(0, Math.min(255, r)) / 255;
+    g = Math.max(0, Math.min(255, g)) / 255;
+    b = Math.max(0, Math.min(255, b)) / 255;
+
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     const d = max - min;
@@ -103,6 +134,10 @@ class ColorConverterService {
    * Convert HSV values (h: 0-360, s: 0-1, v: 0-1) to an RGB tuple.
    */
   public hsvToRgb(h: number, s: number, v: number): RGBTuple {
+    h = isNaN(h) ? 0 : Math.max(0, Math.min(360, h));
+    s = isNaN(s) ? 0 : Math.max(0, Math.min(1, s));
+    v = isNaN(v) ? 0 : Math.max(0, Math.min(1, v));
+
     const c = v * s;
     const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
     const m = v - c;
@@ -112,7 +147,7 @@ class ColorConverterService {
     else if (h >= 120 && h < 180) { g1 = c; b1 = x; }
     else if (h >= 180 && h < 240) { g1 = x; b1 = c; }
     else if (h >= 240 && h < 300) { r1 = x; b1 = c; }
-    else if (h >= 300 && h < 360) { r1 = c; b1 = x; }
+    else if (h >= 300 && h <= 360) { r1 = c; b1 = x; }
     return [
       Math.round((r1 + m) * 255),
       Math.round((g1 + m) * 255),
@@ -124,6 +159,7 @@ class ColorConverterService {
    * Convert Kelvin temperature to an approximation RGB tuple.
    */
   public kelvinToRgb(kelvin: number): RGBTuple {
+    if (isNaN(kelvin)) return [255, 255, 255];
     const temp = Math.max(1000, Math.min(40000, kelvin)) / 100;
     let r = 0, g = 0, b = 0;
 
@@ -157,7 +193,8 @@ class ColorConverterService {
    * Linear interpolation between two RGB tuples.
    */
   public lerpRgb(a: RGBTuple, b: RGBTuple, factor: number): RGBTuple {
-    const f = Math.max(0, Math.min(1, factor));
+    if (!a || !b) return [0, 0, 0];
+    const f = isNaN(factor) ? 0 : Math.max(0, Math.min(1, factor));
     return [
       Math.round(a[0] + (b[0] - a[0]) * f),
       Math.round(a[1] + (b[1] - a[1]) * f),

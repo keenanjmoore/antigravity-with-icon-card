@@ -1,6 +1,6 @@
 /**
  * Multi-Domain Slider Calculations & Boundary Engine for Antigravity Cards
- * Handles math, scaling, stepping, and bounds across Lights, Fans, Covers, Climate, and Media Players.
+ * Handles math, scaling, precision step snapping, and international boundary validation.
  */
 
 export interface GenericSliderConfig {
@@ -18,7 +18,7 @@ export interface GenericSliderConfig {
 
 class SliderCalculationsEngine {
   /**
-   * Determine slider configuration parameters based on entity domain and state.
+   * Determine slider configuration parameters based on entity domain and state with bounds validation.
    */
   public getSliderConfig(domain: string, stateObj: any): GenericSliderConfig | null {
     if (!stateObj) return null;
@@ -49,7 +49,7 @@ class SliderCalculationsEngine {
           label: 'Fan Speed',
           min: 0,
           max: 100,
-          step,
+          step: step > 0 ? step : 1,
           currentValue: curPct,
           currentPercent: curPct,
           serviceDomain: 'fan',
@@ -93,12 +93,25 @@ class SliderCalculationsEngine {
       }
 
       case 'climate': {
-        const min = stateObj.attributes?.min_temp ?? 45;
-        const max = stateObj.attributes?.max_temp ?? 95;
-        const step = stateObj.attributes?.target_temp_step ?? 1;
+        let min = stateObj.attributes?.min_temp;
+        let max = stateObj.attributes?.max_temp;
+        const step = stateObj.attributes?.target_temp_step ?? stateObj.attributes?.target_temperature_step ?? 0.5;
+        
+        // International fallback detection based on current temp magnitude
+        if (min === undefined || max === undefined) {
+          const sampleTemp = stateObj.attributes?.temperature ?? 20;
+          const isLikelyFahrenheit = sampleTemp > 45;
+          min = isLikelyFahrenheit ? 60 : 15;
+          max = isLikelyFahrenheit ? 85 : 30;
+        }
+
+        if (min >= max) {
+          max = min + 10;
+        }
+
         const val = stateObj.attributes?.temperature ?? stateObj.attributes?.target_temp_low ?? min;
         const range = max - min;
-        const pct = range > 0 ? Math.round(((val - min) / range) * 100) : 0;
+        const pct = range > 0 ? Math.max(0, Math.min(100, Math.round(((val - min) / range) * 100))) : 0;
         return {
           domain: 'climate',
           label: 'Temperature',
@@ -164,16 +177,21 @@ class SliderCalculationsEngine {
    * Clamp a value between min and max bounds.
    */
   public clamp(value: number, min: number, max: number): number {
+    if (isNaN(value)) return min;
     return Math.max(min, Math.min(max, value));
   }
 
   /**
-   * Snap a numeric slider value to the configured step increment.
+   * Snap a numeric slider value to the configured step increment avoiding float errors.
    */
   public snapToStep(value: number, step: number, min: number): number {
+    if (isNaN(value)) return min;
     if (step <= 0) return value;
-    const stepped = Math.round((value - min) / step) * step + min;
-    return Number(stepped.toFixed(step < 1 ? 2 : 0));
+    const steps = Math.round((value - min) / step);
+    const result = min + steps * step;
+    const stepStr = step.toString();
+    const decimals = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
+    return Number(result.toFixed(Math.min(decimals, 6)));
   }
 
   /**
@@ -181,7 +199,7 @@ class SliderCalculationsEngine {
    */
   public valueToPercent(value: number, min: number, max: number): number {
     const range = max - min;
-    if (range <= 0) return 0;
+    if (range <= 0 || isNaN(value)) return 0;
     return Math.max(0, Math.min(100, Math.round(((value - min) / range) * 100)));
   }
 
@@ -190,6 +208,7 @@ class SliderCalculationsEngine {
    */
   public percentToValue(percent: number, min: number, max: number): number {
     const range = max - min;
+    if (isNaN(percent)) return min;
     return min + (Math.max(0, Math.min(100, percent)) / 100) * range;
   }
 }
