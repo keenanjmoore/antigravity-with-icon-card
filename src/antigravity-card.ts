@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "134";
+export const CARD_VERSION = "135";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -41,6 +41,12 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
       syntax: '<percentage>',
       inherits: true,
       initialValue: '100%'
+    });
+    (CSS as any).registerProperty({
+      name: '--glow-intensity',
+      syntax: '<number>',
+      inherits: true,
+      initialValue: '1'
     });
   } catch {
     // Already registered or unsupported
