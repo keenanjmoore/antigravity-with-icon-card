@@ -174,7 +174,7 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
 
   // Sub-Buttons (1-4)
   sub_button_1_entity?: string;
-  sub_button_1_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'open_close' | 'stop' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'clean' | 'dock' | 'locate' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
+  sub_button_1_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'swing_mode' | 'clean' | 'dock' | 'locate' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'input_select' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
   sub_button_1_icon?: string;
   sub_button_1_color?: string;
   sub_button_1_show_background?: boolean;
@@ -185,7 +185,7 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
   sub_button_1_double_tap_action?: ActionConfig;
 
   sub_button_2_entity?: string;
-  sub_button_2_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'open_close' | 'stop' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'clean' | 'dock' | 'locate' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
+  sub_button_2_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'swing_mode' | 'clean' | 'dock' | 'locate' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'input_select' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
   sub_button_2_icon?: string;
   sub_button_2_color?: string;
   sub_button_2_show_background?: boolean;
@@ -196,7 +196,7 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
   sub_button_2_double_tap_action?: ActionConfig;
 
   sub_button_3_entity?: string;
-  sub_button_3_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'open_close' | 'stop' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'clean' | 'dock' | 'locate' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
+  sub_button_3_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'swing_mode' | 'clean' | 'dock' | 'locate' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'input_select' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
   sub_button_3_icon?: string;
   sub_button_3_color?: string;
   sub_button_3_show_background?: boolean;
@@ -207,7 +207,7 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
   sub_button_3_double_tap_action?: ActionConfig;
 
   sub_button_4_entity?: string;
-  sub_button_4_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'open_close' | 'stop' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'clean' | 'dock' | 'locate' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
+  sub_button_4_type?: 'button' | 'play_pause' | 'next' | 'previous' | 'open_close' | 'stop' | 'open_tilt' | 'close_tilt' | 'stop_tilt' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'fan_mode' | 'swing_mode' | 'clean' | 'dock' | 'locate' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'humidity_up' | 'humidity_down' | 'input_select' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness';
   sub_button_4_icon?: string;
   sub_button_4_color?: string;
   sub_button_4_show_background?: boolean;

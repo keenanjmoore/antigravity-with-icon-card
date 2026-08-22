@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "128";
+export const CARD_VERSION = "129";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -129,9 +129,17 @@ function kelvinToRgb(kelvin: number): [number, number, number] {
   kelvinToRgb(k);
 });
 
+const RGB_HEX_CACHE = new Map<string, string>();
+
 function rgbToHex(rgb: any): string {
   if (!Array.isArray(rgb) || rgb.length < 3) return "#ffffff";
-  return "#" + rgb.slice(0, 3).map((x: any) => Math.round(Number(x) || 0).toString(16).padStart(2, '0')).join('');
+  const key = `${rgb[0]},${rgb[1]},${rgb[2]}`;
+  const cached = RGB_HEX_CACHE.get(key);
+  if (cached) return cached;
+  const hex = "#" + rgb.slice(0, 3).map((x: any) => Math.round(Number(x) || 0).toString(16).padStart(2, '0')).join('');
+  if (RGB_HEX_CACHE.size > 512) RGB_HEX_CACHE.clear();
+  RGB_HEX_CACHE.set(key, hex);
+  return hex;
 }
 
 function rgbToHue(r: number, g: number, b: number): number {
@@ -320,8 +328,13 @@ function safeForwardHaptic(type: any, enabled = true) {
   try {
     forwardHaptic(type);
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator && typeof navigator.vibrate === 'function') {
-      const duration = type === 'heavy' ? 20 : (type === 'medium' ? 12 : 6);
-      navigator.vibrate(duration);
+      let pattern: number | number[] = 6;
+      if (type === 'heavy') pattern = 20;
+      else if (type === 'medium') pattern = 12;
+      else if (type === 'success') pattern = [40, 40, 80];
+      else if (type === 'warning') pattern = [50, 30, 50];
+      else if (type === 'error') pattern = [50, 100, 50];
+      navigator.vibrate(pattern);
     }
   } catch {
     // Ignore haptic errors on unsupported web views (e.g. wall tablets, desktop)
@@ -1256,7 +1269,12 @@ export class AntigravityWithIconCard extends LitElement {
         // 3. Vacuum Domain Status
         if (domain === 'vacuum') {
           const vState = stateObj.state;
-          const label = vState === 'cleaning' ? 'Cleaning' : (vState === 'docked' ? 'Docked' : (vState === 'returning' ? 'Returning' : vState));
+          let label = vState;
+          if (vState === 'cleaning') label = '🧹 Cleaning';
+          else if (vState === 'docked') label = '🏠 Docked';
+          else if (vState === 'returning') label = '🔄 Returning';
+          else if (vState === 'paused') label = '⏸️ Paused';
+          else if (vState === 'error') label = '⚠️ Error';
           const bat = stateObj.attributes?.battery_level;
           return bat !== undefined ? `${label} • 🔋${bat}%` : label;
         }
@@ -1294,7 +1312,8 @@ export class AntigravityWithIconCard extends LitElement {
           if (aState === 'armed_away') return '🛡️ Armed Away';
           if (aState === 'disarmed') return 'Disarmed';
           if (aState === 'triggered') return '⚠️ TRIGGERED';
-          if (aState === 'pending') return '⏳ Arming Pending';
+          if (aState === 'pending') return '⏳ Arming Pending...';
+          if (aState === 'arming') return '⏳ Arming...';
         }
 
         // 8. Lock Domain Status
@@ -1306,7 +1325,12 @@ export class AntigravityWithIconCard extends LitElement {
           if (stateObj.state === 'unlocking') return 'Unlocking...';
         }
 
-        // 9. Light Domain Status with Color Temp / Mode
+        // 9. Button / Input Button Status
+        if (domain === 'button' || domain === 'input_button') {
+          return 'Press to run';
+        }
+
+        // 10. Light Domain Status with Color Temp / Mode
         if (domain === 'light' && stateObj.state === 'on') {
           const b = stateObj.attributes?.brightness;
           const pct = b !== undefined ? Math.round((b / 255) * 100) : 100;
@@ -1323,6 +1347,15 @@ export class AntigravityWithIconCard extends LitElement {
           const rel = this._formatRelativeTime(stateObj.state);
           if (rel) return rel;
         }
+
+        // Numeric precision formatter for sensor entities
+        if (stateObj.attributes?.display_precision !== undefined && !isNaN(Number(stateObj.state))) {
+          const prec = Number(stateObj.attributes.display_precision);
+          const formattedNum = Number(stateObj.state).toFixed(prec);
+          const uom = stateObj.attributes?.unit_of_measurement ? ` ${stateObj.attributes.unit_of_measurement}` : '';
+          return `${formattedNum}${uom}`;
+        }
+
         if (typeof this.hass.formatEntityState === 'function') {
           try {
             return this.hass.formatEntityState(stateObj);
@@ -2846,7 +2879,7 @@ export class AntigravityWithIconCard extends LitElement {
            tabindex="0" 
            role="button" 
            title="Select Color (${currentHex})" 
-           style="${colorStyle}"
+           style="${colorStyle} background: ${currentHex} !important; border: 2px solid rgba(255,255,255,0.7); box-shadow: 0 1px 4px rgba(0,0,0,0.3);"
            @keydown=${(e: KeyboardEvent) => {
              if (e.key === 'Enter' || e.key === ' ') {
                e.preventDefault();
@@ -2858,8 +2891,8 @@ export class AntigravityWithIconCard extends LitElement {
                .value=${currentHex} 
                @input=${(e: Event) => this._handleColorInput(e, true, entityId || this.config.entity, 'sub_color_picker_' + entityId)}
                @change=${(e: Event) => this._handleColorInput(e, false, entityId || this.config.entity)} />
-        ${label ? html`<span class="sub-button-label">${label}</span>` : nothing}
-        ${liveStateText ? html`<span class="sub-button-state">${liveStateText}</span>` : nothing}
+        ${label ? html`<span class="sub-button-label" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">${label}</span>` : nothing}
+        ${liveStateText ? html`<span class="sub-button-state" style="text-shadow: 0 1px 2px rgba(0,0,0,0.8);">${liveStateText}</span>` : nothing}
       </div>
     `;
   }
@@ -2872,43 +2905,34 @@ export class AntigravityWithIconCard extends LitElement {
     label?: string,
     tapAction?: any,
     holdAction?: any,
-    subType: 'button' | 'play_pause' | 'next' | 'previous' | 'open_close' | 'stop' | 'lock_unlock' | 'garage_toggle' | 'fan_speed' | 'clean' | 'dock' | 'locate' | 'hvac_mode' | 'light_effect' | 'dim_up' | 'dim_down' | 'temp_warm' | 'temp_cool' | 'slider' | 'google_slider' | 'color_temp' | 'color_picker' | 'brightness' = 'button',
+    subType: string = 'button',
     doubleTapAction?: any,
     showState = false
   ) {
-    const stateObj = entityId ? this.hass.states[entityId] : undefined;
+    const stateObj = entityId ? this.hass?.states[entityId] : this.hass?.states[this.config.entity || ''];
+    const isActive = this._isEntityActive(stateObj);
 
-    if (entityId && !stateObj) {
-      return html`
-        <div class="sub-button missing" title="Entity not found: ${entityId}">
-          <ha-icon icon="mdi:alert-circle-outline"></ha-icon>
-        </div>
-      `;
-    }
-
-    const isActive = stateObj ? this._isEntityActive(stateObj) : false;
-    
-    let dynamicSubColor = this._resolveColor(customColor);
-    if (!dynamicSubColor && isActive && stateObj?.attributes?.rgb_color && Array.isArray(stateObj.attributes.rgb_color)) {
-      dynamicSubColor = `rgb(${stateObj.attributes.rgb_color.join(',')})`;
-    }
-
-    const colorStyle = dynamicSubColor ? `color: ${dynamicSubColor};` : '';
-    const bgClass = showBg ? '' : 'no-bg';
-    const liveStateText = (showState && stateObj) ? this._getInfoContent('state', stateObj) : '';
-
-    // Delegate to extracted renderers for complex sub-types
     if (subType === 'slider' || subType === 'google_slider') {
+      const colorStyle = customColor ? `--primary-color: ${customColor}; --slider-color: ${customColor};` : '';
+      const bgClass = showBg ? '' : 'no-bg';
       return this._renderSubSlider(entityId, stateObj, subType, colorStyle, bgClass);
     }
 
-    if (subType === 'color_picker') {
+    let liveStateText: string | TemplateResult | undefined;
+    if (showState && stateObj) {
+      liveStateText = this._getInfoContent('state', stateObj);
+    }
+
+    const domain = (entityId || this.config.entity || '').split('.')[0];
+    if (subType === 'color_picker' && (domain === 'light' || (!entityId && this.config.entity?.startsWith('light.')))) {
+      const colorStyle = customColor ? `color: ${customColor};` : '';
+      const bgClass = showBg ? '' : 'no-bg';
       return this._renderSubColorPicker(entityId, stateObj, colorStyle, bgClass, label, liveStateText);
     }
 
     let subIcon = customIcon;
+    let subTitle = '';
     let subIsActive = isActive;
-    let subTitle = label || '';
     let subAnimClass = '';
     let subLabel = label;
     let defaultAction: (() => void) | undefined = undefined;
@@ -2974,6 +2998,30 @@ export class AntigravityWithIconCard extends LitElement {
           };
           break;
         }
+        case 'open_tilt': {
+          if (!subIcon) subIcon = 'mdi:arrow-top-right-bottom-left';
+          subTitle = 'Open Tilt';
+          defaultAction = () => {
+            this.hass?.callService('cover', 'open_cover_tilt', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
+        case 'close_tilt': {
+          if (!subIcon) subIcon = 'mdi:arrow-bottom-left-top-right';
+          subTitle = 'Close Tilt';
+          defaultAction = () => {
+            this.hass?.callService('cover', 'close_cover_tilt', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
+        case 'stop_tilt': {
+          if (!subIcon) subIcon = 'mdi:stop';
+          subTitle = 'Stop Tilt';
+          defaultAction = () => {
+            this.hass?.callService('cover', 'stop_cover_tilt', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
         case 'lock_unlock': {
           const isLocked = stateObj?.state === 'locked';
           const isJammed = stateObj?.state === 'jammed';
@@ -2998,6 +3046,30 @@ export class AntigravityWithIconCard extends LitElement {
             else if (curPct >= 60) nextPct = 100;
             else if (curPct >= 30) nextPct = 66;
             this.hass?.callService('fan', 'set_percentage', { entity_id: entityId || this.config.entity, percentage: nextPct });
+          };
+          break;
+        }
+        case 'fan_mode': {
+          const curFanMode = stateObj?.attributes?.fan_mode || 'auto';
+          const fanModes: string[] = stateObj?.attributes?.fan_modes || ['auto', 'low', 'medium', 'high'];
+          const nextFanMode = fanModes[(fanModes.indexOf(curFanMode) + 1) % fanModes.length] || 'auto';
+          if (!subIcon) subIcon = 'mdi:fan';
+          subTitle = `Fan Mode: ${curFanMode} -> ${nextFanMode}`;
+          if (!subLabel) subLabel = curFanMode;
+          defaultAction = () => {
+            this.hass?.callService('climate', 'set_fan_mode', { entity_id: entityId || this.config.entity, fan_mode: nextFanMode });
+          };
+          break;
+        }
+        case 'swing_mode': {
+          const curSwing = stateObj?.attributes?.swing_mode || 'off';
+          const swingModes: string[] = stateObj?.attributes?.swing_modes || ['off', 'vertical', 'horizontal', 'both'];
+          const nextSwing = swingModes[(swingModes.indexOf(curSwing) + 1) % swingModes.length] || 'off';
+          if (!subIcon) subIcon = 'mdi:arrow-split-horizontal';
+          subTitle = `Swing: ${curSwing} -> ${nextSwing}`;
+          if (!subLabel) subLabel = curSwing;
+          defaultAction = () => {
+            this.hass?.callService('climate', 'set_swing_mode', { entity_id: entityId || this.config.entity, swing_mode: nextSwing });
           };
           break;
         }
@@ -3142,6 +3214,41 @@ export class AntigravityWithIconCard extends LitElement {
           }
           break;
         }
+        case 'humidity_up': {
+          const curH = Number(stateObj?.attributes?.humidity ?? stateObj?.attributes?.target_humidity ?? 50);
+          const nextH = Math.min(100, curH + 5);
+          if (!subIcon) subIcon = 'mdi:water-plus';
+          subTitle = `Humidity +5% (${nextH}%)`;
+          if (!subLabel) subLabel = '+5%';
+          defaultAction = () => {
+            this.hass?.callService('humidifier', 'set_humidity', { entity_id: entityId || this.config.entity, humidity: nextH });
+          };
+          break;
+        }
+        case 'humidity_down': {
+          const curH = Number(stateObj?.attributes?.humidity ?? stateObj?.attributes?.target_humidity ?? 50);
+          const nextH = Math.max(0, curH - 5);
+          if (!subIcon) subIcon = 'mdi:water-minus';
+          subTitle = `Humidity -5% (${nextH}%)`;
+          if (!subLabel) subLabel = '-5%';
+          defaultAction = () => {
+            this.hass?.callService('humidifier', 'set_humidity', { entity_id: entityId || this.config.entity, humidity: nextH });
+          };
+          break;
+        }
+        case 'input_select': {
+          const curOpt = stateObj?.state || '';
+          const options: string[] = stateObj?.attributes?.options || [];
+          const nextOpt = options.length > 0 ? (options[(options.indexOf(curOpt) + 1) % options.length] || options[0]) : curOpt;
+          if (!subIcon) subIcon = 'mdi:form-dropdown';
+          subTitle = `Option: ${curOpt} -> Next: ${nextOpt}`;
+          if (!subLabel) subLabel = curOpt;
+          defaultAction = () => {
+            const sDomain = (entityId || this.config.entity || '').split('.')[0] === 'select' ? 'select' : 'input_select';
+            this.hass?.callService(sDomain, 'select_next', { entity_id: entityId || this.config.entity });
+          };
+          break;
+        }
         case 'temp_warm': {
           if (!subIcon) subIcon = 'mdi:weather-sunny';
           subTitle = 'Warm White (2700K)';
@@ -3249,6 +3356,8 @@ export class AntigravityWithIconCard extends LitElement {
         box-sizing: border-box;
         overflow: hidden;
         contain: layout paint style;
+        content-visibility: auto;
+        contain-intrinsic-size: 64px;
         -webkit-tap-highlight-color: transparent;
         -webkit-touch-callout: none;
         user-select: none;
@@ -3268,12 +3377,38 @@ export class AntigravityWithIconCard extends LitElement {
         transform: translate3d(0, 0, 0);
         backface-visibility: hidden;
       }
+      .sub-button ha-icon,
+      .sub-button ha-svg-icon {
+        pointer-events: none;
+      }
       .sub-button:hover {
         will-change: transform, background, color;
       }
       .sub-button:active {
         transform: scale(0.93) translate3d(0, 0, 0) !important;
         will-change: transform, background, color;
+      }
+      .color-temp-chips,
+      .color-swatch-chips,
+      .sub-buttons-container {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .color-temp-chips::-webkit-scrollbar,
+      .color-swatch-chips::-webkit-scrollbar,
+      .sub-buttons-container::-webkit-scrollbar {
+        display: none;
+      }
+      .color-swatch-chip[active] {
+        outline: 2px solid #ffffff;
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.85);
+      }
+      .alarm-pending {
+        animation: ag-alarm-pulse 1.5s infinite alternate;
+      }
+      @keyframes ag-alarm-pulse {
+        from { box-shadow: 0 0 4px #ff9800; }
+        to { box-shadow: 0 0 16px #ff9800, inset 0 0 8px rgba(255, 152, 0, 0.3); }
       }
       .warning-card {
         padding: 16px;
