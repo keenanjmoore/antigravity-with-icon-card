@@ -224,10 +224,6 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
   active_border_gradient?: boolean;
   use_icon_light_color?: boolean;
 
-  // Custom Presets & Advanced Sliders
-  color_presets?: string[];
-  show_cover_tilt?: boolean;
-  show_dual_climate_sliders?: boolean;
 
   // Multi-Stage Fade Transitions & Decay Sliders
   fade_transition_enabled?: boolean;

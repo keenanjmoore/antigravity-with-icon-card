@@ -5,6 +5,10 @@ import type { HomeAssistant } from 'custom-card-helpers';
 import { handleAction, forwardHaptic } from 'custom-card-helpers';
 import type { AntigravityCardConfig } from './types';
 import { DEFAULT_CARD_CONFIG } from './types';
+import { memoryTracker } from './memory-tracker';
+import { powerHelper } from './power-helper';
+import { cleanupWebGL } from './gpu-utils';
+import { runAntigravityCI } from './ci-workflow';
 import './editor';
 
 // Augment HomeAssistant type for newer HA APIs not yet in custom-card-helpers
@@ -17,10 +21,19 @@ declare module 'custom-card-helpers' {
 declare global {
   interface Window {
     customCards?: any[];
+    runAntigravityCI?: () => Promise<any>;
+    antigravityMemoryReport?: () => void;
+    antigravityPowerStatus?: () => boolean;
   }
 }
 
-export const CARD_VERSION = "144";
+if (typeof window !== 'undefined') {
+  window.runAntigravityCI = runAntigravityCI;
+  window.antigravityMemoryReport = () => memoryTracker.logStatus();
+  window.antigravityPowerStatus = () => powerHelper.isPowerSaveActive();
+}
+
+export const CARD_VERSION = "145";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
@@ -61,9 +74,6 @@ window.customCards.push({
   preview: true,
   description: "A custom card merging Bubble Card styling with Mushroom Card controls, full icon customizations, and multi-stage fade transitions."
 });
-if (!customElements.get('antigravity-with-icon-card')) {
-  customElements.define('antigravity-with-icon-card', AntigravityCardWithIcon);
-}
 
 // ---- Global Resume & Gesture Debounce State ----
 let LAST_APP_RESUME_TIME = Date.now();
@@ -462,8 +472,9 @@ export class AntigravityWithIconCard extends LitElement {
   private _subStartY = 0;
   private _subTapTimerMap = new Map<string, any>();
 
-  // Monitored entities for zero-allocation state tracking
   private _monitoredEntities: string[] = [];
+  private _powerUnsubscribe: (() => void) | null = null;
+  private _gl: WebGLRenderingContext | null = null;
 
   setConfig(config: AntigravityCardConfig) {
     if (!config) {
@@ -482,13 +493,13 @@ export class AntigravityWithIconCard extends LitElement {
     if (this.config.sub_button_2_entity) entitySet.add(this.config.sub_button_2_entity);
     if (this.config.sub_button_3_entity) entitySet.add(this.config.sub_button_3_entity);
     if (this.config.sub_button_4_entity) entitySet.add(this.config.sub_button_4_entity);
-    if (this.config.tap_action?.target?.entity_id) {
-      const t = this.config.tap_action.target.entity_id;
+    if ((this.config.tap_action as any)?.target?.entity_id) {
+      const t = (this.config.tap_action as any).target.entity_id;
       if (typeof t === 'string') entitySet.add(t);
       else if (Array.isArray(t)) t.forEach(id => entitySet.add(id));
     }
-    if (this.config.hold_action?.target?.entity_id) {
-      const t = this.config.hold_action.target.entity_id;
+    if ((this.config.hold_action as any)?.target?.entity_id) {
+      const t = (this.config.hold_action as any).target.entity_id;
       if (typeof t === 'string') entitySet.add(t);
       else if (Array.isArray(t)) t.forEach(id => entitySet.add(id));
     }
@@ -825,11 +836,27 @@ export class AntigravityWithIconCard extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    memoryTracker.registerCard(this);
     this._mountTime = Date.now();
     this._pointerDownReceived = false;
-    // Visibility is handled by updated() — no need to call here
+    
+    // Subscribe to battery / power-save changes
+    this._powerUnsubscribe = powerHelper.addChangeListener(() => {
+      this._updatePowerSaveAttribute();
+    });
+    this._updatePowerSaveAttribute();
+
     this._setupRelativeTimer();
     this._setupIntersectionObserver();
+  }
+
+  private _updatePowerSaveAttribute() {
+    const isPowerSave = powerHelper.isPowerSaveActive(this.hass);
+    if (isPowerSave) {
+      this.setAttribute('power-save', '');
+    } else {
+      this.removeAttribute('power-save');
+    }
   }
 
   private _setupIntersectionObserver() {
@@ -858,7 +885,7 @@ export class AntigravityWithIconCard extends LitElement {
     // Check if fade is actively in progress (not expired)
     let isFading = false;
     if (hasFade && stateObj) {
-      const multiStage = this._computeMultiStageFade(stateObj);
+      const multiStage = this._calculateMultiStageFade(stateObj);
       isFading = multiStage.enabled && multiStage.activeFade && multiStage.progressPct < 100;
     }
 
@@ -884,6 +911,9 @@ export class AntigravityWithIconCard extends LitElement {
           }
         }
       }
+      if (powerHelper.isPowerSaveActive(this.hass)) {
+        intervalMs = Math.max(intervalMs, 10000); // Low-power battery optimization
+      }
       this._relativeTimer = setInterval(() => {
         if (!this.hasAttribute('offscreen') && this.style.display !== 'none') {
           // If fade completed, teardown timer to save battery
@@ -905,12 +935,21 @@ export class AntigravityWithIconCard extends LitElement {
     if (!entity || !this.hass) return false;
     const stateObj = this.hass.states[entity];
     if (!stateObj) return false;
-    const multiStage = this._computeMultiStageFade(stateObj);
+    const multiStage = this._calculateMultiStageFade(stateObj);
     return multiStage.enabled && multiStage.activeFade && multiStage.progressPct < 100;
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    memoryTracker.unregisterCard(this);
+    if (this._powerUnsubscribe) {
+      this._powerUnsubscribe();
+      this._powerUnsubscribe = null;
+    }
+    if (this._gl) {
+      cleanupWebGL(this._gl);
+      this._gl = null;
+    }
     this._throttleMap.clear();
     this._subTapTimerMap.forEach(t => clearTimeout(t));
     this._subTapTimerMap.clear();
@@ -1010,8 +1049,8 @@ export class AntigravityWithIconCard extends LitElement {
 
   private _calculateMultiStageFade(
     stateObj: any,
-    defaultActiveStr: string,
-    defaultInactiveStr: string
+    defaultActiveStr: string = '',
+    defaultInactiveStr: string = ''
   ): FadeCalculationResult {
     if (!this.config?.fade_transition_enabled || !stateObj) {
       return DISABLED_FADE_RESULT;
@@ -1484,7 +1523,7 @@ export class AntigravityWithIconCard extends LitElement {
         actionConfig = this.config.hold_action || (isNonToggleable ? { action: 'more-info' } : { action: 'toggle' });
       }
       else {
-        if (this.config.tap_action && this.config.tap_action.action && this.config.tap_action.action !== 'default') {
+        if (this.config.tap_action && this.config.tap_action.action && (this.config.tap_action.action as string) !== 'default') {
           // If explicit tap_action is toggle on a non-toggleable domain, safely treat as none
           if (isNonToggleable && this.config.tap_action.action === 'toggle') {
             actionConfig = { action: 'none' };
@@ -1842,10 +1881,11 @@ export class AntigravityWithIconCard extends LitElement {
 
   // --- THROTTLED SERVICE CALL HELPER ---
 
-  private _throttledCall(key: string, fn: () => void, delayMs = 100): void {
+  private _throttledCall(key: string, fn: () => void, delayMs?: number): void {
+    const effectiveDelay = delayMs ?? (powerHelper.isPowerSaveActive(this.hass) ? 60 : 30);
     const last = this._throttleMap.get(key) ?? 0;
     const now = Date.now();
-    if (now - last < delayMs) return;
+    if (now - last < effectiveDelay) return;
     this._throttleMap.set(key, now);
     try {
       fn();
@@ -1855,7 +1895,7 @@ export class AntigravityWithIconCard extends LitElement {
         if (this._throttleMap.get(key) === now) {
           this._throttleMap.delete(key);
         }
-      }, delayMs + 50);
+      }, effectiveDelay + 50);
     }
   }
 
@@ -2333,7 +2373,6 @@ export class AntigravityWithIconCard extends LitElement {
     const subButtons = this._getSubButtons();
 
     // Typography
-    const primaryWeight = this.config.font_weight_primary ?? 'bold';
     let overrideTextVars = '';
     if (this.config.text_color_mode === 'active_accent' && isActive) {
       overrideTextVars += `--primary-text-color: ${activeColor}; `;
@@ -2966,10 +3005,13 @@ export class AntigravityWithIconCard extends LitElement {
     const stateObj = entityId ? this.hass?.states[entityId] : this.hass?.states[this.config.entity || ''];
     const isActive = this._isEntityActive(stateObj);
 
+    const colorStyle = customColor ? `color: ${customColor};` : '';
+    const bgClass = showBg ? '' : 'no-bg';
+    const dynamicSubColor = customColor ? this._resolveColor(customColor) : undefined;
+
     if (subType === 'slider' || subType === 'google_slider') {
-      const colorStyle = customColor ? `--primary-color: ${customColor}; --slider-color: ${customColor};` : '';
-      const bgClass = showBg ? '' : 'no-bg';
-      return this._renderSubSlider(entityId, stateObj, subType, colorStyle, bgClass);
+      const sliderColorStyle = customColor ? `--primary-color: ${customColor}; --slider-color: ${customColor};` : '';
+      return this._renderSubSlider(entityId, stateObj, subType, sliderColorStyle, bgClass);
     }
 
     let liveStateText: string | TemplateResult | undefined;
@@ -2979,8 +3021,6 @@ export class AntigravityWithIconCard extends LitElement {
 
     const domain = (entityId || this.config.entity || '').split('.')[0];
     if (subType === 'color_picker' && (domain === 'light' || (!entityId && this.config.entity?.startsWith('light.')))) {
-      const colorStyle = customColor ? `color: ${customColor};` : '';
-      const bgClass = showBg ? '' : 'no-bg';
       return this._renderSubColorPicker(entityId, stateObj, colorStyle, bgClass, label, liveStateText);
     }
 
@@ -3763,6 +3803,20 @@ export class AntigravityWithIconCard extends LitElement {
       :host([offscreen]) .pulse,
       :host([offscreen]) .scroll-content {
         animation-play-state: paused !important;
+      }
+      :host([power-save]) {
+        --ag-transition-speed: 0.1s;
+      }
+      :host([power-save]) .pulse,
+      :host([power-save]) .anim-spin,
+      :host([power-save]) .anim-bounce {
+        animation: none !important;
+      }
+      :host([power-save]) .theme-glassmorphism,
+      :host([power-save]) .theme-aurora {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: var(--card-background-color, rgba(30, 30, 30, 0.9)) !important;
       }
       :host([hidden]) {
         display: none !important;
