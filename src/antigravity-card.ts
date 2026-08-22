@@ -20,12 +20,32 @@ declare global {
   }
 }
 
-export const CARD_VERSION = "132";
+export const CARD_VERSION = "133";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${CARD_VERSION} `,
   'color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'color: #6200ea; background: #ede7f6; font-weight: 700; padding: 2px 6px; border-radius: 0 4px 4px 0;'
 );
+
+// ---- CSS Houdini Custom Property Registration (Zero-Reflow GPU Transitions) ----
+if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
+  try {
+    (CSS as any).registerProperty({
+      name: '--slider-pct',
+      syntax: '<percentage>',
+      inherits: true,
+      initialValue: '0%'
+    });
+    (CSS as any).registerProperty({
+      name: '--decay-pct',
+      syntax: '<percentage>',
+      inherits: true,
+      initialValue: '100%'
+    });
+  } catch {
+    // Already registered or unsupported
+  }
+}
 
 // ---- Card Registration ----
 window.customCards = window.customCards || [];

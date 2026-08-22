@@ -1864,12 +1864,27 @@ var lo = Object.defineProperty, co = Object.getOwnPropertyDescriptor, ne = (t, e
     (a = t[n]) && (r = (o ? a(e, i, r) : a(r)) || r);
   return o && r && lo(e, i, r), r;
 };
-const uo = "132";
+const uo = "133";
 console.info(
   `%c 🚀 ANTIGRAVITY-CARD (WITH-ICON) %c v${uo} `,
   "color: white; background: #6200ea; font-weight: 700; padding: 2px 6px; border-radius: 4px 0 0 4px;",
   "color: #6200ea; background: #ede7f6; font-weight: 700; padding: 2px 6px; border-radius: 0 4px 4px 0;"
 );
+if (typeof CSS < "u" && "registerProperty" in CSS)
+  try {
+    CSS.registerProperty({
+      name: "--slider-pct",
+      syntax: "<percentage>",
+      inherits: !0,
+      initialValue: "0%"
+    }), CSS.registerProperty({
+      name: "--decay-pct",
+      syntax: "<percentage>",
+      inherits: !0,
+      initialValue: "100%"
+    });
+  } catch {
+  }
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "antigravity-with-icon-card",
