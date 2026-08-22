@@ -561,16 +561,15 @@ export class AntigravityWithIconCard extends LitElement {
   private _computeStaticStylesAndClasses() {
     if (!this.config) return;
 
-    const basePadding = this.config.card_padding ?? 12;
-    const cardPaddingVert = this.config.card_padding_vertical ?? 4;
-    const cardPaddingHoriz = this.config.card_padding_horizontal ?? basePadding;
+    const cardPaddingVert = this.config.card_padding_vertical ?? this.config.card_padding ?? 0;
+    const cardPaddingHoriz = this.config.card_padding_horizontal ?? this.config.card_padding ?? 15;
 
     const pTop = this.config.card_padding_top ?? cardPaddingVert;
     const pBottom = this.config.card_padding_bottom ?? cardPaddingVert;
     const pLeft = this.config.card_padding_left ?? cardPaddingHoriz;
     const pRight = this.config.card_padding_right ?? cardPaddingHoriz;
 
-    const baseMargin = this.config.card_margin;
+    const baseMargin = this.config.card_margin ?? -1;
     const marginVert = this.config.card_margin_vertical ?? baseMargin;
     const marginHoriz = this.config.card_margin_horizontal ?? baseMargin;
     const mTop = this.config.card_margin_top ?? marginVert;
@@ -610,10 +609,10 @@ export class AntigravityWithIconCard extends LitElement {
     const textPaddingHoriz = this.config.text_padding_horizontal ?? this.config.text_padding ?? 0;
     const featuresPaddingVert = this.config.features_padding_vertical ?? this.config.features_padding ?? 0;
     const featuresPaddingHoriz = this.config.features_padding_horizontal ?? this.config.features_padding ?? 0;
-    const subBtnPadding = this.config.sub_button_padding ?? 0;
+    const subBtnPadding = this.config.sub_button_padding ?? 6;
     const subBtnContainerPadding = this.config.sub_button_container_padding ?? 0;
 
-    const subBtnAlign = this.config.sub_button_alignment ? `--ag-sub-button-alignment: ${this.config.sub_button_alignment};` : '';
+    const subBtnAlign = this.config.sub_button_alignment ? `--ag-sub-button-alignment: ${this.config.sub_button_alignment};` : '--ag-sub-button-alignment: flex-end;';
     const scrollSpeedVar = this.config.text_scrolling_speed ? `--ag-scroll-speed: ${this.config.text_scrolling_speed}s;` : '';
     const fullSliderOpacity = this.config.full_slider_opacity !== undefined ? `--ag-full-slider-opacity: ${this.config.full_slider_opacity / 100};` : '';
 
@@ -636,12 +635,12 @@ export class AntigravityWithIconCard extends LitElement {
       `--ag-features-padding: ${featuresPaddingVert}px ${featuresPaddingHoriz}px;`,
       `--ag-sub-button-padding: ${subBtnPadding}px;`,
       `--ag-sub-button-container-padding: ${subBtnContainerPadding}px;`,
-      `--ag-content-spacing: ${this.config.content_spacing ?? 12}px;`,
-      `--ag-text-spacing: ${this.config.text_spacing ?? 2}px;`,
-      `--ag-features-margin: ${this.config.features_margin ?? 4}px;`,
+      `--ag-content-spacing: ${this.config.content_spacing ?? 6}px;`,
+      `--ag-text-spacing: ${this.config.text_spacing ?? -1}px;`,
+      `--ag-features-margin: ${this.config.features_margin ?? -3}px;`,
       `--ag-slider-spacing: ${this.config.slider_spacing ?? 6}px;`,
       `--ag-icon-margin: ${this.config.icon_margin ?? 0}px;`,
-      `--ag-sub-button-spacing: ${this.config.sub_button_spacing ?? 6}px;`,
+      `--ag-sub-button-spacing: ${this.config.sub_button_spacing ?? -4}px;`,
       `--ag-slider-height: ${sliderHeight}px;`,
       `--ag-slider-radius: ${sliderRadius}px;`,
       `--ag-badge-size: ${this.config.badge_size ?? 16}px;`,
@@ -662,19 +661,19 @@ export class AntigravityWithIconCard extends LitElement {
       this.config.text_color_mode === 'inverse' ? 'text-color-mode-inverse' : ''
     ].filter(Boolean).join(' ');
 
-    const textOffsetX = Number(this.config.text_offset_x) || 0;
-    const textOffsetY = Number(this.config.text_offset_y) || 0;
+    const textOffsetX = this.config.text_offset_x !== undefined ? Number(this.config.text_offset_x) : -28;
+    const textOffsetY = this.config.text_offset_y !== undefined ? Number(this.config.text_offset_y) : 2;
     this._textOffsetStyle = textOffsetX !== 0 || textOffsetY !== 0 ? `transform: translate(${textOffsetX}px, ${textOffsetY}px);` : '';
 
-    const pStartX = Number(this.config.primary_text_start_offset ?? this.config.primary_text_offset_x) || 0;
-    const pEndX = Number(this.config.primary_text_end_offset) || 0;
+    const pStartX = Number(this.config.primary_text_start_offset ?? this.config.primary_text_offset_x ?? 8);
+    const pEndX = Number(this.config.primary_text_end_offset ?? 250);
     const pOffsetY = Number(this.config.primary_text_offset_y) || 0;
     const pTrans = (pStartX !== 0 || pOffsetY !== 0) ? `transform: translate(${pStartX}px, ${pOffsetY}px);` : '';
     const pMargin = (pStartX !== 0 || pEndX !== 0) ? `margin-left: ${pStartX}px; margin-right: ${pEndX}px;` : '';
     this._primaryTextOffsetStyle = `${pTrans} ${pMargin}`.trim();
 
-    const sStartX = Number(this.config.secondary_text_start_offset ?? this.config.secondary_text_offset_x) || 0;
-    const sEndX = Number(this.config.secondary_text_end_offset) || 0;
+    const sStartX = Number(this.config.secondary_text_start_offset ?? this.config.secondary_text_offset_x ?? 8);
+    const sEndX = Number(this.config.secondary_text_end_offset ?? 250);
     const sOffsetY = Number(this.config.secondary_text_offset_y) || 0;
     const sTrans = (sStartX !== 0 || sOffsetY !== 0) ? `transform: translate(${sStartX}px, ${sOffsetY}px);` : '';
     const sMargin = (sStartX !== 0 || sEndX !== 0) ? `margin-left: ${sStartX}px; margin-right: ${sEndX}px;` : '';
@@ -711,10 +710,10 @@ export class AntigravityWithIconCard extends LitElement {
 
     this._textBoxWidth = this.config.text_box_width ? `max-width: ${this.config.text_box_width}; width: ${this.config.text_box_width};` : 'width: 100%; max-width: 100%;';
 
-    const txtTransformPrimary = this.config.text_transform_primary && this.config.text_transform_primary !== 'none' ? `text-transform: ${this.config.text_transform_primary};` : '';
+    const txtTransformPrimary = `text-transform: ${this.config.text_transform_primary ?? 'capitalize'};`;
     const txtTransformSecondary = `text-transform: ${this.config.text_transform_secondary ?? 'capitalize'};`;
-    const letterSpacingStyle = this.config.letter_spacing ? `letter-spacing: ${this.config.letter_spacing}px;` : '';
-    const lineHeightStyle = this.config.line_height ? `line-height: ${this.config.line_height};` : '';
+    const letterSpacingStyle = `letter-spacing: ${this.config.letter_spacing ?? -0.5}px;`;
+    const lineHeightStyle = `line-height: ${this.config.line_height ?? 1.1};`;
     const primaryWeight = this.config.font_weight_primary ?? '800';
 
     this._primaryTextStyle = `font-size: ${this.config.font_size_primary ?? 14}px; font-weight: ${primaryWeight}; ${txtTransformPrimary} ${letterSpacingStyle} ${lineHeightStyle}`;

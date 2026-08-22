@@ -280,6 +280,18 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
   text_color_secondary?: string;
   text_offset_x?: number;
   text_offset_y?: number;
+  primary_text_start_offset?: number;
+  primary_text_end_offset?: number;
+  primary_text_offset_x?: number;
+  primary_text_offset_y?: number;
+  secondary_text_start_offset?: number;
+  secondary_text_end_offset?: number;
+  secondary_text_offset_x?: number;
+  secondary_text_offset_y?: number;
+  features_offset_x?: number;
+  features_offset_y?: number;
+  letter_spacing?: number;
+  line_height?: number | string;
   
   // Layout Spacing & Offsets
   card_padding?: number;
@@ -296,6 +308,26 @@ export interface AntigravityCardConfig extends LovelaceCardConfig {
   card_margin_bottom?: number;
   card_margin_left?: number;
   card_margin_right?: number;
+  content_spacing?: number;
+  text_spacing?: number;
+  features_margin?: number;
+  sub_button_spacing?: number;
+  sub_button_padding?: number;
+  sub_button_container_padding?: number;
+  sub_button_alignment?: string;
+  text_alignment?: string;
+  content_alignment?: string;
+  text_box_width?: string;
+  card_border_width?: number;
+  card_border_style?: string;
+  card_border_color?: string;
+  card_width?: string;
+  card_max_width?: string;
+  card_height?: string;
+  card_min_height?: number;
+  backdrop_blur?: number;
+  card_opacity?: number;
+  transition_duration?: number;
   border_radius?: number;
   border_width?: number;
   border_color?: string;
@@ -343,4 +375,29 @@ export const DEFAULT_CARD_CONFIG: Partial<AntigravityCardConfig> = {
   collapsible_sub_buttons: false,
   auto_collapse: false,
   collapse_timeout: 5000,
+  
+  // Learned Formatting Defaults
+  font_size_primary: 14,
+  font_size_secondary: 15,
+  font_weight_primary: "800",
+  text_transform_primary: "capitalize",
+  text_transform_secondary: "capitalize",
+  letter_spacing: -0.5,
+  line_height: 1.1,
+  content_spacing: 6,
+  text_spacing: -1,
+  features_margin: -3,
+  sub_button_spacing: -4,
+  sub_button_padding: 6,
+  card_padding_vertical: 0,
+  card_padding_horizontal: 15,
+  card_margin: -1,
+  text_offset_x: -28,
+  text_offset_y: 2,
+  primary_text_start_offset: 8,
+  primary_text_end_offset: 250,
+  secondary_text_start_offset: 8,
+  secondary_text_end_offset: 250,
+  active_color: "rgb(214, 0, 0)",
+  inactive_color: "rgb(3, 181, 0)",
 };

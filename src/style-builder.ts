@@ -5,16 +5,13 @@
 
 import { AntigravityCardConfig } from './types';
 import { THEME_PRESETS } from './themes';
-import {
-  DEFAULT_BORDER_RADIUS_PX,
-  DEFAULT_CARD_PADDING_PX,
-  DEFAULT_CARD_PADDING_VERT_PX,
-} from './constants';
 
 export interface ComputedCardStyles {
   staticCardStyles: string;
   staticCardClasses: string;
   textOffsetStyle: string;
+  primaryTextOffsetStyle: string;
+  secondaryTextOffsetStyle: string;
   featuresOffsetStyle: string;
   mainSliderMarginOffsets: string;
   colorTempMarginOffsets: string;
@@ -29,16 +26,15 @@ export class StyleBuilder {
    * Precompute static style strings on configuration changes to eliminate render allocations.
    */
   public static computeStaticStyles(config: AntigravityCardConfig): ComputedCardStyles {
-    const basePadding = config.card_padding ?? DEFAULT_CARD_PADDING_PX;
-    const cardPaddingVert = config.card_padding_vertical ?? DEFAULT_CARD_PADDING_VERT_PX;
-    const cardPaddingHoriz = config.card_padding_horizontal ?? basePadding;
+    const cardPaddingVert = config.card_padding_vertical ?? config.card_padding ?? 0;
+    const cardPaddingHoriz = config.card_padding_horizontal ?? config.card_padding ?? 15;
 
     const pTop = config.card_padding_top ?? cardPaddingVert;
     const pBottom = config.card_padding_bottom ?? cardPaddingVert;
     const pLeft = config.card_padding_left ?? cardPaddingHoriz;
     const pRight = config.card_padding_right ?? cardPaddingHoriz;
 
-    const baseMargin = config.card_margin;
+    const baseMargin = config.card_margin ?? -1;
     const marginVert = config.card_margin_vertical ?? baseMargin;
     const marginHoriz = config.card_margin_horizontal ?? baseMargin;
     const mTop = config.card_margin_top ?? marginVert;
@@ -51,53 +47,157 @@ export class StyleBuilder {
       cardMarginStyle = `margin: ${mTop ?? 0}px ${mRight ?? 0}px ${mBottom ?? 0}px ${mLeft ?? 0}px;`;
     }
 
-    const borderRadius = config.border_radius ?? DEFAULT_BORDER_RADIUS_PX;
+    const borderRadius = config.border_radius ?? 12;
+    const isGoogleSlider = config.slider_style === 'google';
+    const isFullSlider = config.slider_style === 'full';
+    const defaultSliderHeight = isGoogleSlider ? 42 : isFullSlider ? 40 : 12;
+    const sliderHeight = config.slider_height !== undefined ? config.slider_height : defaultSliderHeight;
+    const defaultSliderRadius = isGoogleSlider ? 21 : isFullSlider ? 0 : (sliderHeight / 2);
+    const sliderRadius = config.slider_border_radius !== undefined ? config.slider_border_radius : defaultSliderRadius;
+
+    const borderWidth = config.card_border_width ?? (config.card_border_color ? 1 : 0);
+    const borderStyle = config.card_border_style ?? 'solid';
+    const borderProp = borderWidth > 0 ? `border: ${borderWidth}px ${borderStyle} ${config.card_border_color || 'var(--divider-color, rgba(150, 150, 150, 0.2))'};` : '';
+
+    const widthStyle = config.card_width ? `width: ${config.card_width};` : '';
+    const maxWidthStyle = config.card_max_width ? `max-width: ${config.card_max_width};` : '';
+    const heightStyle = config.card_height ? `height: ${config.card_height};` : '';
+    const minHeightStyle = config.card_min_height !== undefined ? `min-height: ${config.card_min_height}px;` : '';
+    const fillStyle = config.fill_container === true ? 'height: 100%; width: 100%;' : '';
+    const overflowStyle = config.overflow_hidden !== false ? 'overflow: hidden;' : 'overflow: visible;';
+    const blurStyle = config.backdrop_blur !== undefined ? `backdrop-filter: blur(${config.backdrop_blur}px); -webkit-backdrop-filter: blur(${config.backdrop_blur}px);` : '';
+    const cardOpacityStyle = config.card_opacity !== undefined ? `opacity: ${config.card_opacity / 100};` : '';
+    const transitionStyle = config.transition_duration !== undefined ? `transition: all ${config.transition_duration}ms ease;` : '';
+
+    const textPaddingVert = config.card_padding_vertical ?? 0;
+    const textPaddingHoriz = config.card_padding_horizontal ?? 0;
+    const featuresPaddingVert = 0;
+    const featuresPaddingHoriz = 0;
+    const subBtnPadding = config.sub_button_padding ?? 6;
+    const subBtnContainerPadding = config.sub_button_container_padding ?? 0;
+
+    const subBtnAlign = config.sub_button_alignment ? `--ag-sub-button-alignment: ${config.sub_button_alignment};` : '--ag-sub-button-alignment: flex-end;';
+    const scrollSpeedVar = config.text_scrolling_speed ? `--ag-scroll-speed: ${config.text_scrolling_speed}s;` : '';
+    const fullSliderOpacity = config.full_slider_opacity !== undefined ? `--ag-full-slider-opacity: ${config.full_slider_opacity / 100};` : '';
+
     const themeName = config.theme_preset ?? 'glassmorphism';
     const themeDef = THEME_PRESETS[themeName] || THEME_PRESETS.glassmorphism;
     const themeStyles = themeDef.generateStyles(config);
 
-    const staticCardStyles = `
-      padding: ${pTop}px ${pRight}px ${pBottom}px ${pLeft}px;
-      border-radius: ${borderRadius}px;
-      ${cardMarginStyle}
-      ${themeStyles}
-    `.trim();
+    const staticCardStyles = [
+      cardMarginStyle,
+      `border-radius: ${borderRadius}px;`,
+      borderProp,
+      widthStyle,
+      maxWidthStyle,
+      heightStyle,
+      minHeightStyle,
+      fillStyle,
+      overflowStyle,
+      blurStyle,
+      cardOpacityStyle,
+      transitionStyle,
+      `--ag-card-padding: ${pTop}px ${pRight}px ${pBottom}px ${pLeft}px;`,
+      `--ag-text-padding: ${textPaddingVert}px ${textPaddingHoriz}px;`,
+      `--ag-features-padding: ${featuresPaddingVert}px ${featuresPaddingHoriz}px;`,
+      `--ag-sub-button-padding: ${subBtnPadding}px;`,
+      `--ag-sub-button-container-padding: ${subBtnContainerPadding}px;`,
+      `--ag-content-spacing: ${config.content_spacing ?? 6}px;`,
+      `--ag-text-spacing: ${config.text_spacing ?? -1}px;`,
+      `--ag-features-margin: ${config.features_margin ?? -3}px;`,
+      `--ag-slider-spacing: ${config.slider_spacing ?? 6}px;`,
+      `--ag-sub-button-spacing: ${config.sub_button_spacing ?? -4}px;`,
+      `--ag-slider-height: ${sliderHeight}px;`,
+      `--ag-slider-radius: ${sliderRadius}px;`,
+      `--ag-text-alignment: ${config.text_alignment ?? 'left'};`,
+      `--ag-content-alignment: ${config.content_alignment ?? 'flex-start'};`,
+      subBtnAlign,
+      scrollSpeedVar,
+      fullSliderOpacity,
+      themeStyles,
+    ].filter(Boolean).join(' ').trim();
 
-    const staticCardClasses = `ha-card ${themeDef.cssClass} ${config.layout || 'default'}`;
+    const staticCardClasses = [
+      'ha-card',
+      themeDef.cssClass,
+      `layout-${config.layout || 'default'}`,
+      config.card_layout === 'large' ? 'card-large' : '',
+      `slider-style-${config.slider_style ?? 'circle'}`,
+      config.text_color_mode === 'inverse' ? 'text-color-mode-inverse' : '',
+    ].filter(Boolean).join(' ');
 
     // Text & Container Offsets
-    const textOffsetX = config.text_offset_x ?? 0;
-    const textOffsetY = config.text_offset_y ?? 0;
-    const textOffsetStyle = (textOffsetX !== 0 || textOffsetY !== 0)
-      ? `transform: translate(${textOffsetX}px, ${textOffsetY}px);`
-      : '';
+    const textOffsetX = Number(config.text_offset_x) || -28;
+    const textOffsetY = Number(config.text_offset_y) || 2;
+    const textOffsetStyle = `transform: translate(${textOffsetX}px, ${textOffsetY}px);`;
+
+    const pStartX = Number(config.primary_text_start_offset ?? config.primary_text_offset_x) || 8;
+    const pEndX = Number(config.primary_text_end_offset) || 250;
+    const pOffsetY = Number(config.primary_text_offset_y) || 0;
+    const pTrans = (pStartX !== 0 || pOffsetY !== 0) ? `transform: translate(${pStartX}px, ${pOffsetY}px);` : '';
+    const pMargin = (pStartX !== 0 || pEndX !== 0) ? `margin-left: ${pStartX}px; margin-right: ${pEndX}px;` : '';
+    const primaryTextOffsetStyle = `${pTrans} ${pMargin}`.trim();
+
+    const sStartX = Number(config.secondary_text_start_offset ?? config.secondary_text_offset_x) || 8;
+    const sEndX = Number(config.secondary_text_end_offset) || 250;
+    const sOffsetY = Number(config.secondary_text_offset_y) || 0;
+    const sTrans = (sStartX !== 0 || sOffsetY !== 0) ? `transform: translate(${sStartX}px, ${sOffsetY}px);` : '';
+    const sMargin = (sStartX !== 0 || sEndX !== 0) ? `margin-left: ${sStartX}px; margin-right: ${sEndX}px;` : '';
+    const secondaryTextOffsetStyle = `${sTrans} ${sMargin}`.trim();
+
+    const featuresOffsetX = Number(config.features_offset_x) || 0;
+    const featuresOffsetY = Number(config.features_offset_y) || 0;
+    const featuresOffsetStyle = (featuresOffsetX !== 0 || featuresOffsetY !== 0) ? `transform: translate(${featuresOffsetX}px, ${featuresOffsetY}px);` : '';
+
+    const mainStartOffset = Number(config.slider_start_offset) || 0;
+    const mainEndOffset = Number(config.slider_end_offset) || 0;
+    const mainSliderMarginOffsets = [
+      mainStartOffset ? `margin-left: ${mainStartOffset}px !important;` : '',
+      mainEndOffset ? `margin-right: ${mainEndOffset}px !important;` : '',
+    ].filter(Boolean).join(' ');
+
+    const ctStartOffset = Number(config.color_temp_start_offset) || 0;
+    const ctEndOffset = Number(config.color_temp_end_offset) || 0;
+    const colorTempMarginOffsets = [
+      ctStartOffset ? `margin-left: ${ctStartOffset}px !important;` : '',
+      ctEndOffset ? `margin-right: ${ctEndOffset}px !important;` : '',
+    ].filter(Boolean).join(' ');
+
+    const csStartOffset = Number(config.color_slider_start_offset) || 0;
+    const csEndOffset = Number(config.color_slider_end_offset) || 0;
+    const colorHueMarginOffsets = [
+      csStartOffset ? `margin-left: ${csStartOffset}px !important;` : '',
+      csEndOffset ? `margin-right: ${csEndOffset}px !important;` : '',
+    ].filter(Boolean).join(' ');
+
+    const textBoxWidth = config.text_box_width ? `max-width: ${config.text_box_width}; width: ${config.text_box_width};` : 'width: 100%; max-width: 100%;';
 
     // Typography
     const primaryFamily = config.font_family_primary ? `font-family: ${config.font_family_primary};` : '';
-    const primarySize = config.font_size_primary ? `font-size: ${config.font_size_primary}px;` : '';
-    const primaryWeight = config.font_weight_primary ? `font-weight: ${config.font_weight_primary};` : '';
-    const primaryTransform = config.text_transform_primary && config.text_transform_primary !== 'none'
-      ? `text-transform: ${config.text_transform_primary};`
-      : '';
-    const primaryTextStyle = `${primaryFamily} ${primarySize} ${primaryWeight} ${primaryTransform}`.trim();
+    const primarySize = `font-size: ${config.font_size_primary ?? 14}px;`;
+    const primaryWeight = `font-weight: ${config.font_weight_primary ?? '800'};`;
+    const primaryTransform = `text-transform: ${config.text_transform_primary ?? 'capitalize'};`;
+    const letterSpacingStyle = `letter-spacing: ${config.letter_spacing ?? -0.5}px;`;
+    const lineHeightStyle = `line-height: ${config.line_height ?? 1.1};`;
+    const primaryTextStyle = `${primaryFamily} ${primarySize} ${primaryWeight} ${primaryTransform} ${letterSpacingStyle} ${lineHeightStyle}`.trim();
 
     const secondaryFamily = config.font_family_secondary ? `font-family: ${config.font_family_secondary};` : '';
-    const secondarySize = config.font_size_secondary ? `font-size: ${config.font_size_secondary}px;` : '';
+    const secondarySize = `font-size: ${config.font_size_secondary ?? 15}px;`;
     const secondaryWeight = config.font_weight_secondary ? `font-weight: ${config.font_weight_secondary};` : '';
-    const secondaryTransform = config.text_transform_secondary && config.text_transform_secondary !== 'none'
-      ? `text-transform: ${config.text_transform_secondary};`
-      : '';
-    const secondaryTextStyle = `${secondaryFamily} ${secondarySize} ${secondaryWeight} ${secondaryTransform}`.trim();
+    const secondaryTransform = `text-transform: ${config.text_transform_secondary ?? 'capitalize'};`;
+    const secondaryTextStyle = `${secondaryFamily} ${secondarySize} ${secondaryWeight} ${secondaryTransform} ${letterSpacingStyle} ${lineHeightStyle}`.trim();
 
     return {
       staticCardStyles,
       staticCardClasses,
       textOffsetStyle,
-      featuresOffsetStyle: '',
-      mainSliderMarginOffsets: '',
-      colorTempMarginOffsets: '',
-      colorHueMarginOffsets: '',
-      textBoxWidth: '',
+      primaryTextOffsetStyle,
+      secondaryTextOffsetStyle,
+      featuresOffsetStyle,
+      mainSliderMarginOffsets,
+      colorTempMarginOffsets,
+      colorHueMarginOffsets,
+      textBoxWidth,
       primaryTextStyle,
       secondaryTextStyle,
     };
